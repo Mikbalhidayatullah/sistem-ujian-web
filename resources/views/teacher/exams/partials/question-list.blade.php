@@ -231,6 +231,17 @@
                                 </div>
                             </form>
 
+                            <form
+                                id="delete-question-{{ $question->id }}"
+                                method="POST"
+                                action="{{ route('teacher.exams.questions.destroy', [$exam, $question]) }}"
+                                class="hidden"
+                                onsubmit="return confirm('Hapus soal ini? Jawaban dan pengaruh nilainya akan ikut diperbarui.')"
+                            >
+                                @csrf
+                                @method('DELETE')
+                            </form>
+
                         </div>
                     </div>
                 </div>
@@ -241,3 +252,5 @@
             @endforelse
     </x-ui.scroll-panel>
 </div>
+
+
