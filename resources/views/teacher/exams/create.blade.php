@@ -1,4 +1,9 @@
 <x-layouts.dashboard :title="'Buat Ujian | Sistem Ujian'">
+    @php
+        $isEditingExam = filled($editingExam);
+        $startAtValue = old('start_at', $editingExam?->start_at?->format('Y-m-d\TH:i'));
+        $endAtValue = old('end_at', $editingExam?->end_at?->format('Y-m-d\TH:i'));
+    @endphp
     <section class="space-y-8">
         @if ($subjects->isEmpty())
             <div class="dashboard-card p-6 sm:p-7">
@@ -28,70 +33,75 @@
                 <div class="dashboard-card p-6 sm:p-7">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <p class="dashboard-kicker">Form Ujian</p>
-                            <h2 class="dashboard-section-title mt-2">Informasi dasar ujian</h2>
+                            <p class="dashboard-kicker">{{ $isEditingExam ? 'Edit Ujian' : 'Form Ujian' }}</p>
+                            <h2 class="dashboard-section-title mt-2">{{ $isEditingExam ? 'Perbarui informasi dasar ujian' : 'Informasi dasar ujian' }}</h2>
                             <p class="dashboard-copy mt-3">
-                                Isi seluruh data inti ujian di bawah ini. Anda masih bisa melanjutkan pengelolaan soal dan akses siswa setelah ujian berhasil dibuat.
+                                {{ $isEditingExam
+                                    ? 'Gunakan form yang sama seperti pembuatan ujian untuk mengubah tanggal, token, PIN, durasi, dan pengaturan inti lainnya.'
+                                    : 'Isi seluruh data inti ujian di bawah ini. Anda masih bisa melanjutkan pengelolaan soal dan akses siswa setelah ujian berhasil dibuat.' }}
                             </p>
                         </div>
-                        <span class="dashboard-pill">Langkah 1 dari alur pembuatan ujian</span>
+                        <span class="dashboard-pill">{{ $isEditingExam ? 'Mode edit ujian' : 'Langkah 1 dari alur pembuatan ujian' }}</span>
                     </div>
 
-                    <form method="POST" action="{{ route('teacher.exams.store') }}" class="mt-6 grid gap-5 md:grid-cols-2">
+                    <form method="POST" action="{{ $isEditingExam ? route('teacher.exams.update', $editingExam) : route('teacher.exams.store') }}" class="mt-6 grid gap-5 md:grid-cols-2">
                         @csrf
+                        @if ($isEditingExam)
+                            @method('PUT')
+                        @endif
 
                         <div class="space-y-2 md:col-span-2">
                             <label class="text-sm font-semibold text-slate-600">Mata pelajaran</label>
                             <select name="subject_id" class="dashboard-input" required>
                                 @foreach ($subjects as $subject)
-                                    <option value="{{ $subject->id }}" @selected(old('subject_id') == $subject->id)>{{ $subject->display_name }}</option>
+                                    <option value="{{ $subject->id }}" @selected(old('subject_id', $editingExam?->subject_id) == $subject->id)>{{ $subject->display_name }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="space-y-2 md:col-span-2">
                             <label class="text-sm font-semibold text-slate-600">Judul ujian</label>
-                            <input type="text" name="title" class="dashboard-input" value="{{ old('title') }}" placeholder="Contoh: Ujian Tengah Semester Matematika" required>
+                            <input type="text" name="title" class="dashboard-input" value="{{ old('title', $editingExam?->title) }}" placeholder="Contoh: Ujian Tengah Semester Matematika" required>
                         </div>
 
                         <div class="space-y-2 md:col-span-2">
                             <label class="text-sm font-semibold text-slate-600">Deskripsi</label>
-                            <textarea name="description" rows="4" class="dashboard-input" placeholder="Catatan singkat untuk membantu identifikasi ujian">{{ old('description') }}</textarea>
+                            <textarea name="description" rows="4" class="dashboard-input" placeholder="Catatan singkat untuk membantu identifikasi ujian">{{ old('description', $editingExam?->description) }}</textarea>
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">Token ujian</label>
-                            <input type="text" name="access_token" class="dashboard-input uppercase" value="{{ old('access_token') }}" placeholder="Kosongkan untuk generate otomatis" maxlength="20" autocomplete="off">
+                            <input type="text" name="access_token" class="dashboard-input uppercase" value="{{ old('access_token', $editingExam?->access_token) }}" placeholder="{{ $isEditingExam ? 'Kosongkan untuk tetap memakai token lama' : 'Kosongkan untuk generate otomatis' }}" maxlength="20" autocomplete="off">
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">PIN ujian</label>
-                            <input type="text" name="access_pin" class="dashboard-input" value="{{ old('access_pin') }}" placeholder="6 digit, kosongkan untuk otomatis" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off">
+                            <input type="text" name="access_pin" class="dashboard-input" value="{{ old('access_pin', $editingExam?->access_pin) }}" placeholder="{{ $isEditingExam ? 'Kosongkan untuk tetap memakai PIN lama' : '6 digit, kosongkan untuk otomatis' }}" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off">
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">Mulai</label>
-                            <input type="datetime-local" name="start_at" class="dashboard-input" value="{{ old('start_at') }}">
+                            <input type="datetime-local" name="start_at" class="dashboard-input" value="{{ $startAtValue }}">
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">Selesai</label>
-                            <input type="datetime-local" name="end_at" class="dashboard-input" value="{{ old('end_at') }}">
+                            <input type="datetime-local" name="end_at" class="dashboard-input" value="{{ $endAtValue }}">
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">Durasi (menit)</label>
-                            <input type="number" min="1" max="300" name="duration_minutes" class="dashboard-input" value="{{ old('duration_minutes', 60) }}" required>
+                            <input type="number" min="1" max="300" name="duration_minutes" class="dashboard-input" value="{{ old('duration_minutes', $editingExam?->duration_minutes ?? 60) }}" required>
                         </div>
 
                         <div class="space-y-2">
                             <label class="text-sm font-semibold text-slate-600">Batas pelanggaran</label>
-                            <input type="number" min="1" max="20" name="max_violations" class="dashboard-input" value="{{ old('max_violations', 3) }}" required>
+                            <input type="number" min="1" max="20" name="max_violations" class="dashboard-input" value="{{ old('max_violations', $editingExam?->max_violations ?? 3) }}" required>
                         </div>
 
                         <label class="dashboard-muted-card flex items-center gap-3 px-4 py-4 text-sm text-slate-700 md:col-span-2">
-                            <input type="checkbox" name="is_active" value="1" class="rounded border-slate-300 bg-white text-sky-500" @checked(old('is_active', true))>
-                            Aktifkan ujian setelah dibuat
+                            <input type="checkbox" name="is_active" value="1" class="rounded border-slate-300 bg-white text-sky-500" @checked(old('is_active', $isEditingExam ? $editingExam->is_active : true))>
+                            {{ $isEditingExam ? 'Biarkan akses manual tetap aktif' : 'Aktifkan ujian setelah dibuat' }}
                         </label>
 
                         <div class="md:col-span-2 action-row">
@@ -100,13 +110,13 @@
                                     <path d="M6 12.5 10 16l8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                     <path d="M5 4.5h14v15H5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                                 </svg>
-                                Simpan ujian
+                                {{ $isEditingExam ? 'Simpan perubahan ujian' : 'Simpan ujian' }}
                             </button>
-                            <a href="{{ route('teacher.dashboard') }}" class="dashboard-button-return gap-2">
+                            <a href="{{ $isEditingExam ? route('teacher.exams.show', $editingExam) : route('teacher.dashboard') }}" class="dashboard-button-return gap-2">
                                 <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
-                                Batal dan kembali
+                                {{ $isEditingExam ? 'Batal edit' : 'Batal dan kembali' }}
                             </a>
                         </div>
                     </form>
@@ -182,7 +192,14 @@
                                     </span>
                                 </td>
                                 <td class="px-5 py-4">
-                                    <div class="flex justify-end">
+                                    <div class="flex justify-end gap-3">
+                                        <a href="{{ route('teacher.exams.edit', $exam) }}" class="dashboard-button-return gap-2">
+                                            <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                <path d="m8 16 7.5-7.5 2 2L10 18H8v-2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                                <path d="M14.5 6.5 16 5a1.4 1.4 0 0 1 2 0l1 1a1.4 1.4 0 0 1 0 2l-1.5 1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            Edit
+                                        </a>
                                         <a href="{{ route('teacher.exams.show', $exam) }}" class="dashboard-button-soft gap-2">
                                             <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                                 <path d="M4 12c1.7-3.4 4.8-5.5 8-5.5s6.3 2.1 8 5.5c-1.7 3.4-4.8 5.5-8 5.5S5.7 15.4 4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -190,6 +207,16 @@
                                             </svg>
                                             Buka detail
                                         </a>
+                                        <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" onsubmit="return confirm('Hapus ujian ini? Semua soal, sesi, jawaban, dan log pelanggaran akan ikut dihapus.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="dashboard-button-danger gap-2">
+                                                <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <path d="M5 7h14M9 7V5.8c0-.7.5-1.3 1.2-1.3h3.6c.7 0 1.2.6 1.2 1.3V7M8.5 10.5v6M12 10.5v6M15.5 10.5v6M7.5 7l.7 11.1c.1.8.7 1.4 1.5 1.4h4.6c.8 0 1.4-.6 1.5-1.4L16.5 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                Hapus
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

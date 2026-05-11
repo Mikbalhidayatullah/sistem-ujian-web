@@ -1,7 +1,37 @@
 <div class="dashboard-card p-6 sm:p-7">
     <x-ui.dashboard-header eyebrow="Bank Soal" title="Daftar soal">
         <x-slot:aside>
-            <x-ui.dashboard-pill>{{ $exam->questions->count() }} soal</x-ui.dashboard-pill>
+            <div class="flex flex-wrap items-center gap-3">
+                <x-ui.dashboard-pill>{{ $exam->questions->count() }} soal</x-ui.dashboard-pill>
+                @if ($exam->questions->isNotEmpty())
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form id="default-question-points-form" method="POST" action="{{ route('teacher.exams.questions.default-points.update', $exam) }}" class="flex items-center gap-2">
+                            @csrf
+                            @method('PATCH')
+                            <label class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Poin default</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                name="default_points"
+                                value="{{ old('default_points', $exam->questions->first()->points ?? 10) }}"
+                                class="dashboard-input h-10 w-14 px-2 py-2 text-center text-sm"
+                                required
+                            >
+                        </form>
+                        <button type="submit" form="default-question-points-form" class="dashboard-button-soft px-4 py-2 text-xs">
+                            Simpan
+                        </button>
+                        <form method="POST" action="{{ route('teacher.exams.questions.destroy-all', $exam) }}" onsubmit="return confirm('Hapus semua soal pada bank soal ini? Semua jawaban siswa untuk soal-soal ini akan ikut dihapus.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
+                                Hapus semua soal
+                            </button>
+                        </form>
+                    </div>
+                @endif
+            </div>
         </x-slot:aside>
     </x-ui.dashboard-header>
 
@@ -201,16 +231,6 @@
                                 </div>
                             </form>
 
-                            <form
-                                id="delete-question-{{ $question->id }}"
-                                method="POST"
-                                action="{{ route('teacher.exams.questions.destroy', [$exam, $question]) }}"
-                                class="hidden"
-                                onsubmit="return confirm('Hapus soal ini? Jawaban dan pengaruh nilainya akan ikut diperbarui.')"
-                            >
-                                @csrf
-                                @method('DELETE')
-                            </form>
                         </div>
                     </div>
                 </div>

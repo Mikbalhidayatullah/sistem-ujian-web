@@ -12,6 +12,16 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
+                <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" onsubmit="return confirm('Hapus ujian ini? Semua soal, sesi, jawaban, log pelanggaran, dan media soal akan ikut dihapus.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="dashboard-button-danger">
+                        Hapus ujian
+                    </button>
+                </form>
+                <a href="{{ route('teacher.exams.edit', $exam) }}" class="dashboard-button-return">
+                    Edit ujian
+                </a>
                 <form method="POST" action="{{ route('teacher.exams.access', $exam) }}">
                     @csrf
                     <input type="hidden" name="action" value="{{ $exam->isManuallyOpen() ? 'close' : 'open' }}">

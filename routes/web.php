@@ -54,11 +54,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');
         Route::get('/exams/create', [TeacherExamController::class, 'create'])->name('exams.create');
         Route::post('/exams', [TeacherExamController::class, 'store'])->name('exams.store');
+        Route::get('/exams/{exam}/edit', [TeacherExamController::class, 'edit'])->name('exams.edit');
+        Route::match(['put', 'patch'], '/exams/{exam}', [TeacherExamController::class, 'update'])->name('exams.update');
+        Route::delete('/exams/{exam}', [TeacherExamController::class, 'destroy'])->name('exams.destroy');
         Route::get('/exams/{exam}', [TeacherExamController::class, 'show'])->name('exams.show');
         Route::get('/exams/{exam}/export-scores', [TeacherExamController::class, 'exportScores'])->name('exams.export-scores');
         Route::post('/exams/{exam}/access', [TeacherExamController::class, 'toggleAccess'])->name('exams.access');
         Route::post('/exams/{exam}/questions/import-template', [TeacherExamController::class, 'importTemplate'])->name('exams.questions.import-template');
         Route::post('/exams/{exam}/questions', [TeacherExamController::class, 'storeQuestion'])->name('exams.questions.store');
+        Route::match(['put', 'patch'], '/exams/{exam}/questions/default-points', [TeacherExamController::class, 'updateDefaultPoints'])
+            ->name('exams.questions.default-points.update');
+        Route::delete('/exams/{exam}/questions', [TeacherExamController::class, 'destroyAllQuestions'])
+            ->name('exams.questions.destroy-all');
         Route::match(['put', 'patch'], '/exams/{exam}/questions/{question}', [TeacherExamController::class, 'updateQuestion'])
             ->whereNumber('question')
             ->name('exams.questions.update');

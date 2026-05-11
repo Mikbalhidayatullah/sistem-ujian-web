@@ -30,6 +30,24 @@ class ExamController extends Controller
                 ->withCount(['questions', 'attempts'])
                 ->latest()
                 ->get(),
+            'editingExam' => null,
+        ]);
+    }
+
+    public function edit(Exam $exam): View
+    {
+        $teacher = auth()->user();
+
+        abort_unless($exam->teacher_id === $teacher->id, 403);
+
+        return view('teacher.exams.create', [
+            'subjects' => $teacher->subjects()->latest()->get(),
+            'exams' => $teacher->exams()
+                ->with('subject')
+                ->withCount(['questions', 'attempts'])
+                ->latest()
+                ->get(),
+            'editingExam' => $exam->load('subject'),
         ]);
     }
 
@@ -37,50 +55,7 @@ class ExamController extends Controller
     {
         $teacher = $request->user();
 
-        $data = $request->validate([
-            'subject_id' => [
-                'required',
-                Rule::exists('subjects', 'id')->where('teacher_id', $teacher->id),
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'access_token' => ['nullable', 'string', 'min:4', 'max:20', 'alpha_num', 'unique:exams,access_token'],
-            'access_pin' => ['nullable', 'regex:/^\d{6}$/'],
-            'start_at' => ['nullable', 'date'],
-            'end_at' => ['nullable', 'date', 'after:start_at'],
-            'duration_minutes' => ['required', 'integer', 'min:1', 'max:300'],
-            'max_violations' => ['required', 'integer', 'min:1', 'max:20'],
-            'is_active' => ['nullable', 'boolean'],
-        ], [
-            'subject_id.required' => 'Mata pelajaran wajib dipilih.',
-            'subject_id.exists' => 'Mata pelajaran yang dipilih tidak valid.',
-            'title.required' => 'Judul ujian wajib diisi.',
-            'title.max' => 'Judul ujian maksimal 255 karakter.',
-            'access_token.min' => 'Token ujian minimal 4 karakter.',
-            'access_token.max' => 'Token ujian maksimal 20 karakter.',
-            'access_token.alpha_num' => 'Token ujian hanya boleh berisi huruf dan angka tanpa spasi.',
-            'access_token.unique' => 'Token ujian sudah dipakai. Gunakan token lain atau kosongkan untuk generate otomatis.',
-            'access_pin.regex' => 'PIN ujian harus terdiri dari tepat 6 digit angka.',
-            'end_at.after' => 'Waktu selesai harus setelah waktu mulai.',
-            'duration_minutes.required' => 'Durasi ujian wajib diisi.',
-            'duration_minutes.integer' => 'Durasi ujian harus berupa angka bulat.',
-            'duration_minutes.min' => 'Durasi ujian minimal 1 menit.',
-            'duration_minutes.max' => 'Durasi ujian maksimal 300 menit.',
-            'max_violations.required' => 'Batas pelanggaran wajib diisi.',
-            'max_violations.integer' => 'Batas pelanggaran harus berupa angka bulat.',
-            'max_violations.min' => 'Batas pelanggaran minimal 1.',
-            'max_violations.max' => 'Batas pelanggaran maksimal 20.',
-        ], [
-            'subject_id' => 'mata pelajaran',
-            'title' => 'judul ujian',
-            'description' => 'deskripsi',
-            'access_token' => 'token ujian',
-            'access_pin' => 'PIN ujian',
-            'start_at' => 'waktu mulai',
-            'end_at' => 'waktu selesai',
-            'duration_minutes' => 'durasi ujian',
-            'max_violations' => 'batas pelanggaran',
-        ]);
+        $data = $this->validateExamData($request, $teacher->id);
 
         $exam = Exam::create([
             'teacher_id' => $teacher->id,
@@ -99,6 +74,32 @@ class ExamController extends Controller
         return redirect()
             ->route('teacher.exams.show', $exam)
             ->with('status', 'Ujian berhasil dibuat. Sekarang tambahkan soal-soalnya.');
+    }
+
+    public function update(Request $request, Exam $exam): RedirectResponse
+    {
+        $teacher = $request->user();
+
+        abort_unless($exam->teacher_id === $teacher->id, 403);
+
+        $data = $this->validateExamData($request, $teacher->id, $exam);
+
+        $exam->update([
+            'subject_id' => $data['subject_id'],
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'access_token' => strtoupper($data['access_token'] ?? $exam->access_token),
+            'access_pin' => $data['access_pin'] ?? $exam->access_pin,
+            'start_at' => $data['start_at'] ?? null,
+            'end_at' => $data['end_at'] ?? null,
+            'duration_minutes' => $data['duration_minutes'],
+            'max_violations' => $data['max_violations'],
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
+        return redirect()
+            ->route('teacher.exams.show', $exam)
+            ->with('status', 'Ujian berhasil diperbarui.');
     }
 
     public function show(Request $request, Exam $exam): View
@@ -139,6 +140,30 @@ class ExamController extends Controller
             ],
             'questionInsightSort' => $questionInsightSort,
         ]);
+    }
+
+    public function destroy(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        DB::transaction(function () use ($exam): void {
+            $mediaPaths = $exam->questions()
+                ->whereNotNull('media_path')
+                ->pluck('media_path')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($mediaPaths->isNotEmpty()) {
+                Storage::delete($mediaPaths->all());
+            }
+
+            $exam->delete();
+        });
+
+        return redirect()
+            ->route('teacher.exams.create')
+            ->with('status', 'Ujian berhasil dihapus.');
     }
 
     public function exportScores(Exam $exam): StreamedResponse
@@ -265,6 +290,67 @@ class ExamController extends Controller
         }
 
         return back()->with('status', 'Soal berhasil ditambahkan.');
+    }
+
+    public function updateDefaultPoints(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'default_points' => ['required', 'integer', 'min:1', 'max:100'],
+        ], [
+            'default_points.required' => 'Poin default wajib diisi.',
+            'default_points.integer' => 'Poin default harus berupa angka bulat.',
+            'default_points.min' => 'Poin default minimal 1.',
+            'default_points.max' => 'Poin default maksimal 100.',
+        ]);
+
+        $updatedPoints = (int) $data['default_points'];
+
+        DB::transaction(function () use ($exam, $updatedPoints): void {
+            $exam->questions()->update([
+                'points' => $updatedPoints,
+            ]);
+
+            $this->refreshExamScores($exam->fresh('questions'));
+        });
+
+        return back()->with('status', 'Poin default bank soal berhasil diperbarui.');
+    }
+
+    public function destroyAllQuestions(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        DB::transaction(function () use ($exam): void {
+            $questions = $exam->questions()->get();
+            $questionIds = $questions->pluck('id');
+
+            $mediaPaths = $questions
+                ->pluck('media_path')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($mediaPaths->isNotEmpty()) {
+                Storage::delete($mediaPaths->all());
+            }
+
+            if ($questionIds->isNotEmpty()) {
+                ExamAnswer::query()
+                    ->whereIn('question_id', $questionIds)
+                    ->delete();
+            }
+
+            foreach ($questions as $question) {
+                $question->options()->delete();
+                $question->delete();
+            }
+
+            $this->refreshExamScores($exam->fresh('questions'));
+        });
+
+        return back()->with('status', 'Semua soal pada bank soal berhasil dihapus.');
     }
 
     public function updateQuestion(Request $request, Exam $exam, Question $question): RedirectResponse
@@ -610,5 +696,60 @@ class ExamController extends Controller
                     ]);
                 }
             });
+    }
+
+    private function validateExamData(Request $request, int $teacherId, ?Exam $exam = null): array
+    {
+        return $request->validate([
+            'subject_id' => [
+                'required',
+                Rule::exists('subjects', 'id')->where('teacher_id', $teacherId),
+            ],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'access_token' => [
+                'nullable',
+                'string',
+                'min:4',
+                'max:20',
+                'alpha_num',
+                Rule::unique('exams', 'access_token')->ignore($exam?->id),
+            ],
+            'access_pin' => ['nullable', 'regex:/^\d{6}$/'],
+            'start_at' => ['nullable', 'date'],
+            'end_at' => ['nullable', 'date', 'after:start_at'],
+            'duration_minutes' => ['required', 'integer', 'min:1', 'max:300'],
+            'max_violations' => ['required', 'integer', 'min:1', 'max:20'],
+            'is_active' => ['nullable', 'boolean'],
+        ], [
+            'subject_id.required' => 'Mata pelajaran wajib dipilih.',
+            'subject_id.exists' => 'Mata pelajaran yang dipilih tidak valid.',
+            'title.required' => 'Judul ujian wajib diisi.',
+            'title.max' => 'Judul ujian maksimal 255 karakter.',
+            'access_token.min' => 'Token ujian minimal 4 karakter.',
+            'access_token.max' => 'Token ujian maksimal 20 karakter.',
+            'access_token.alpha_num' => 'Token ujian hanya boleh berisi huruf dan angka tanpa spasi.',
+            'access_token.unique' => 'Token ujian sudah dipakai. Gunakan token lain atau kosongkan untuk generate otomatis.',
+            'access_pin.regex' => 'PIN ujian harus terdiri dari tepat 6 digit angka.',
+            'end_at.after' => 'Waktu selesai harus setelah waktu mulai.',
+            'duration_minutes.required' => 'Durasi ujian wajib diisi.',
+            'duration_minutes.integer' => 'Durasi ujian harus berupa angka bulat.',
+            'duration_minutes.min' => 'Durasi ujian minimal 1 menit.',
+            'duration_minutes.max' => 'Durasi ujian maksimal 300 menit.',
+            'max_violations.required' => 'Batas pelanggaran wajib diisi.',
+            'max_violations.integer' => 'Batas pelanggaran harus berupa angka bulat.',
+            'max_violations.min' => 'Batas pelanggaran minimal 1.',
+            'max_violations.max' => 'Batas pelanggaran maksimal 20.',
+        ], [
+            'subject_id' => 'mata pelajaran',
+            'title' => 'judul ujian',
+            'description' => 'deskripsi',
+            'access_token' => 'token ujian',
+            'access_pin' => 'PIN ujian',
+            'start_at' => 'waktu mulai',
+            'end_at' => 'waktu selesai',
+            'duration_minutes' => 'durasi ujian',
+            'max_violations' => 'batas pelanggaran',
+        ]);
     }
 }
