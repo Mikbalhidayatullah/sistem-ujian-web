@@ -27,3 +27,6 @@ Homestead.yaml
 Thumbs.db
 
 /.tmp-edge/
+
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
