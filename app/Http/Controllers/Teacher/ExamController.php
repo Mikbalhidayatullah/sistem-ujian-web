@@ -166,6 +166,27 @@ class ExamController extends Controller
             ->with('status', 'Ujian berhasil dihapus.');
     }
 
+    public function destroyAttempt(Request $request, Exam $exam, ExamAttempt $attempt): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+        abort_unless($attempt->exam_id === $exam->id, 404);
+
+        $participantName = $attempt->participantName();
+        $attempt->delete();
+
+        return back()->with('status', 'Data peserta '.$participantName.' berhasil dihapus.');
+    }
+
+    public function destroyAllAttempts(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $deletedCount = $exam->attempts()->count();
+        $exam->attempts()->delete();
+
+        return back()->with('status', $deletedCount.' data peserta berhasil dihapus dari ujian ini.');
+    }
+
     public function exportScores(Exam $exam): StreamedResponse
     {
         abort_unless($exam->teacher_id === auth()->id(), 403);
@@ -210,6 +231,43 @@ class ExamController extends Controller
                 ? 'Akses ujian dibuka secara manual. Siswa tetap harus sesuai jadwal jika tanggal ujian diisi.'
                 : 'Akses ujian ditutup secara manual.'
         );
+    }
+
+    public function destroyViolation(Request $request, Exam $exam, ExamViolation $violation): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+        abort_unless($violation->attempt?->exam_id === $exam->id, 404);
+
+        $attempt = $violation->attempt;
+        $participantName = $attempt?->participantName() ?? 'peserta';
+
+        $violation->delete();
+
+        if ($attempt && $attempt->exists) {
+            $attempt->refreshViolationCount();
+        }
+
+        return back()->with('status', 'Catatan pelanggaran untuk '.$participantName.' berhasil dihapus.');
+    }
+
+    public function destroyAllViolations(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $attempts = $exam->attempts()->get();
+        $attemptIds = $attempts->pluck('id');
+
+        if ($attemptIds->isNotEmpty()) {
+            ExamViolation::query()
+                ->whereIn('attempt_id', $attemptIds)
+                ->delete();
+
+            foreach ($attempts as $attempt) {
+                $attempt->update(['violation_count' => 0]);
+            }
+        }
+
+        return back()->with('status', 'Semua log pelanggaran untuk ujian ini berhasil dihapus.');
     }
 
     public function importTemplate(Request $request, Exam $exam): RedirectResponse

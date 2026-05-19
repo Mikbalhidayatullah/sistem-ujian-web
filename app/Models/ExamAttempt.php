@@ -151,4 +151,11 @@ class ExamAttempt extends Model
 
         return $this->answers()->where('is_correct', false)->count();
     }
+
+    public function refreshViolationCount(): void
+    {
+        $this->update([
+            'violation_count' => $this->violations()->count(),
+        ]);
+    }
 }

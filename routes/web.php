@@ -48,6 +48,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('teacher')->middleware('role:teacher')->name('teacher.')->group(function () {
         Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
         Route::get('/monitoring', [TeacherDashboardController::class, 'monitoring'])->name('monitoring');
+        Route::delete('/monitoring', [TeacherDashboardController::class, 'destroyAllMonitoringViolations'])->name('monitoring.destroy-all');
+        Route::delete('/monitoring/{violation}', [TeacherDashboardController::class, 'destroyMonitoringViolation'])->name('monitoring.destroy');
         Route::get('/subjects', [SubjectController::class, 'index'])->name('subjects.index');
         Route::post('/subjects', [SubjectController::class, 'store'])->name('subjects.store');
         Route::match(['put', 'patch'], '/subjects/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
@@ -57,6 +59,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/exams/{exam}/edit', [TeacherExamController::class, 'edit'])->name('exams.edit');
         Route::match(['put', 'patch'], '/exams/{exam}', [TeacherExamController::class, 'update'])->name('exams.update');
         Route::delete('/exams/{exam}', [TeacherExamController::class, 'destroy'])->name('exams.destroy');
+        Route::delete('/exams/{exam}/attempts', [TeacherExamController::class, 'destroyAllAttempts'])->name('exams.attempts.destroy-all');
+        Route::delete('/exams/{exam}/attempts/{attempt}', [TeacherExamController::class, 'destroyAttempt'])->name('exams.attempts.destroy');
+        Route::delete('/exams/{exam}/violations', [TeacherExamController::class, 'destroyAllViolations'])->name('exams.violations.destroy-all');
+        Route::delete('/exams/{exam}/violations/{violation}', [TeacherExamController::class, 'destroyViolation'])->name('exams.violations.destroy');
         Route::get('/exams/{exam}', [TeacherExamController::class, 'show'])->name('exams.show');
         Route::get('/exams/{exam}/export-scores', [TeacherExamController::class, 'exportScores'])->name('exams.export-scores');
         Route::post('/exams/{exam}/access', [TeacherExamController::class, 'toggleAccess'])->name('exams.access');

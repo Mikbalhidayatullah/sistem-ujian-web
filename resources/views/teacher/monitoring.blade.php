@@ -111,7 +111,18 @@
                         Urutan ditampilkan dari data terbaru ke data yang lebih lama agar Anda bisa lebih cepat memeriksa kejadian yang baru muncul.
                     </p>
                 </div>
-                <span class="dashboard-pill">{{ $violations->total() }} total data</span>
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="dashboard-pill">{{ $violations->total() }} total data</span>
+                    @if ($violations->total() > 0)
+                        <form method="POST" action="{{ route('teacher.monitoring.destroy-all') }}" onsubmit="return confirm('Hapus semua data monitoring pelanggaran untuk semua ujian Anda?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
+                                Hapus semua monitoring
+                            </button>
+                        </form>
+                    @endif
+                </div>
             </div>
 
             <div class="mt-6 space-y-4">
@@ -137,6 +148,16 @@
 
                         <div class="mt-4 rounded-[1.25rem] border border-amber-200/80 bg-white/80 p-4 text-sm leading-7 text-slate-700">
                             {{ $violation->detail ?: 'Pelanggaran terdeteksi dari halaman ujian.' }}
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <form method="POST" action="{{ route('teacher.monitoring.destroy', $violation) }}" onsubmit="return confirm('Hapus catatan monitoring untuk {{ $violation->attempt->participantName() }}?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
+                                    Hapus catatan
+                                </button>
+                            </form>
                         </div>
                     </article>
                 @empty

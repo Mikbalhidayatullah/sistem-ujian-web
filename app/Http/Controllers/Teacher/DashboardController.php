@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\ExamAttempt;
 use App\Models\ExamViolation;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -64,5 +66,46 @@ class DashboardController extends Controller
         return view('teacher.monitoring', [
             'violations' => $violations,
         ]);
+    }
+
+    public function destroyMonitoringViolation(ExamViolation $violation): RedirectResponse
+    {
+        $teacher = auth()->user();
+
+        abort_unless($violation->attempt?->exam?->teacher_id === $teacher->id, 403);
+
+        $attempt = $violation->attempt;
+        $participantName = $attempt?->participantName() ?? 'peserta';
+
+        $violation->delete();
+
+        if ($attempt && $attempt->exists) {
+            $attempt->refreshViolationCount();
+        }
+
+        return back()->with('status', 'Catatan monitoring untuk '.$participantName.' berhasil dihapus.');
+    }
+
+    public function destroyAllMonitoringViolations(): RedirectResponse
+    {
+        $teacher = auth()->user();
+
+        $attempts = ExamAttempt::query()
+            ->whereHas('exam', fn ($query) => $query->where('teacher_id', $teacher->id))
+            ->get();
+
+        $attemptIds = $attempts->pluck('id');
+
+        if ($attemptIds->isNotEmpty()) {
+            ExamViolation::query()
+                ->whereIn('attempt_id', $attemptIds)
+                ->delete();
+
+            foreach ($attempts as $attempt) {
+                $attempt->update(['violation_count' => 0]);
+            }
+        }
+
+        return back()->with('status', 'Semua data monitoring pelanggaran berhasil dihapus.');
     }
 }
