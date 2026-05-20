@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PrintSettingController extends Controller
 {
@@ -74,10 +75,24 @@ class PrintSettingController extends Controller
         return back()->with('status', 'Pengaturan print berhasil diperbarui.');
     }
 
+    public function showLogo(Request $request): BinaryFileResponse
+    {
+        $setting = $request->user()->printSetting;
+
+        abort_unless($setting?->logo_path && Storage::disk('public')->exists($setting->logo_path), 404);
+
+        return response()->file(
+            Storage::disk('public')->path($setting->logo_path),
+            [
+                'Cache-Control' => 'private, max-age=300',
+            ]
+        );
+    }
+
     private function resolvePreviewLogoUrl(?string $logoPath): ?string
     {
         if ($logoPath && Storage::disk('public')->exists($logoPath)) {
-            return asset('storage/'.$logoPath);
+            return route('teacher.settings.print.logo');
         }
 
         foreach (['assets/school/logo-sekolah.png', 'assets/school/logo_sekolah.png'] as $fallbackPath) {

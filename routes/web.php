@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
         Route::match(['put', 'patch'], '/subjects/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
         Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');
         Route::get('/settings/print', [PrintSettingController::class, 'edit'])->name('settings.print.edit');
+        Route::get('/settings/print/logo', [PrintSettingController::class, 'showLogo'])->name('settings.print.logo');
         Route::match(['put', 'patch'], '/settings/print', [PrintSettingController::class, 'update'])->name('settings.print.update');
         Route::get('/exams', [TeacherExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/create', [TeacherExamController::class, 'create'])->name('exams.create');
