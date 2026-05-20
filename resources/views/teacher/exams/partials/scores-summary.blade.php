@@ -34,7 +34,12 @@
                 <tbody class="divide-y divide-slate-200 bg-white text-slate-700">
                     @forelse ($exam->attempts as $attempt)
                         <tr>
-                            <td class="px-4 py-3 font-semibold text-slate-900">{{ $attempt->participantName() }}</td>
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-slate-900">{{ $attempt->participantName() }}</p>
+                                @if ($attempt->student_identifier)
+                                    <p class="mt-1 text-xs text-slate-500">{{ $attempt->student_identifier }}</p>
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ number_format((float) $attempt->score, 2) }}</td>
                             <td class="px-4 py-3">{{ $attempt->correctCount() }}</td>
                             <td class="px-4 py-3">{{ $attempt->wrongCount() }}</td>
@@ -69,7 +74,12 @@
         @forelse ($exam->attempts as $attempt)
             <div class="dashboard-muted-card p-4">
                 <div class="flex items-center justify-between gap-3">
-                    <p class="font-semibold text-slate-900">{{ $attempt->participantName() }}</p>
+                    <div>
+                        <p class="font-semibold text-slate-900">{{ $attempt->participantName() }}</p>
+                        @if ($attempt->student_identifier)
+                            <p class="mt-1 text-xs text-slate-500">{{ $attempt->student_identifier }}</p>
+                        @endif
+                    </div>
                     <p class="text-lg font-black text-sky-600">{{ number_format((float) $attempt->score, 2) }}</p>
                 </div>
                 <div class="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">

@@ -65,7 +65,7 @@
                         <p class="dashboard-kicker">Masuk ujian siswa</p>
                         <h2 class="mt-3 text-2xl font-black text-slate-900">Akses cepat tanpa akun</h2>
                         <p class="mt-3 text-sm leading-7 text-slate-500">
-                            Isi nama lengkap, token, dan PIN dari guru. Status ujian akan dicek otomatis sebelum tombol masuk diaktifkan.
+                            Isi nama lengkap, identitas siswa, token, dan PIN dari guru. Status ujian akan dicek otomatis sebelum tombol masuk diaktifkan.
                         </p>
 
                         <form
@@ -80,6 +80,13 @@
                             <div class="space-y-2">
                                 <label for="full_name" class="text-sm font-semibold text-slate-600">Nama lengkap</label>
                                 <input id="full_name" name="full_name" type="text" value="{{ old('full_name') }}" class="dashboard-input" required>
+                            </div>
+                            <div class="space-y-2">
+                                <label for="student_identifier" class="text-sm font-semibold text-slate-600">NIS / NISN / No. absen</label>
+                                <input id="student_identifier" name="student_identifier" type="text" value="{{ old('student_identifier') }}" class="dashboard-input uppercase" placeholder="Contoh: 24017 atau X-12" required>
+                                <p class="text-xs leading-6 text-slate-500">
+                                    Identitas ini dipakai untuk melanjutkan sesi yang belum selesai dan mencegah masuk ulang setelah ujian dikumpulkan.
+                                </p>
                             </div>
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div class="space-y-2">

@@ -29,6 +29,16 @@
                         {{ $exam->isManuallyOpen() ? 'Tutup akses sekarang' : 'Buka akses sekarang' }}
                     </button>
                 </form>
+                <form method="POST" action="{{ route('teacher.exams.violations.toggle', $exam) }}">
+                    @csrf
+                    <input type="hidden" name="action" value="{{ $exam->violations_enabled ? 'disable' : 'enable' }}">
+                    <button
+                        type="submit"
+                        class="{{ $exam->violations_enabled ? 'dashboard-button-return' : 'dashboard-button-success' }}"
+                    >
+                        {{ $exam->violations_enabled ? 'Matikan fitur pelanggaran' : 'Aktifkan fitur pelanggaran' }}
+                    </button>
+                </form>
                 <a href="{{ route('teacher.exams.export-scores', $exam) }}" class="dashboard-button-soft">
                     Download Excel
                 </a>
@@ -44,6 +54,9 @@
             </x-ui.dashboard-pill>
             <x-ui.dashboard-pill :tone="$exam->isOpenNow() ? 'success' : 'warning'">
                 {{ $exam->isOpenNow() ? 'Siswa bisa masuk sekarang' : 'Siswa belum bisa masuk' }}
+            </x-ui.dashboard-pill>
+            <x-ui.dashboard-pill :tone="$exam->violations_enabled ? 'warning' : 'info'">
+                {{ $exam->violations_enabled ? 'Fitur pelanggaran aktif' : 'Fitur pelanggaran nonaktif' }}
             </x-ui.dashboard-pill>
         </div>
 
@@ -70,6 +83,10 @@
                 <div class="dashboard-muted-card p-4">
                     <p class="text-slate-500">Batas pelanggaran</p>
                     <p class="mt-1 font-bold text-slate-900">{{ $exam->max_violations }}</p>
+                </div>
+                <div class="dashboard-muted-card p-4">
+                    <p class="text-slate-500">Mode pelanggaran</p>
+                    <p class="mt-1 font-bold text-slate-900">{{ $exam->violations_enabled ? 'ON - dicatat otomatis' : 'OFF - open book / fleksibel' }}</p>
                 </div>
                 <div class="dashboard-muted-card p-4">
                     <p class="text-slate-500">Mulai</p>

@@ -4,6 +4,11 @@
             <span class="exam-chip exam-chip-info">
                 {{ $attempt->participantName() }}
             </span>
+            @if ($attempt->student_identifier)
+                <span class="exam-chip exam-chip-neutral">
+                    {{ $attempt->student_identifier }}
+                </span>
+            @endif
             <span class="exam-chip exam-chip-neutral">
                 {{ $attempt->exam->subject->display_name }}
             </span>
@@ -41,6 +46,10 @@
             <div class="exam-stat-card">
                 <p class="exam-label">Nama siswa</p>
                 <p class="exam-heading mt-2 text-lg font-semibold">{{ $attempt->participantName() }}</p>
+            </div>
+            <div class="exam-stat-card">
+                <p class="exam-label">Identitas siswa</p>
+                <p class="exam-heading mt-2 text-lg font-semibold">{{ $attempt->student_identifier ?: '-' }}</p>
             </div>
             <div class="exam-stat-card">
                 <p class="exam-label">Mata pelajaran</p>

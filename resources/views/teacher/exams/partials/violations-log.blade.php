@@ -23,6 +23,9 @@
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="font-semibold text-amber-900">{{ $violation->attempt->participantName() }}</p>
+                            @if ($violation->attempt->student_identifier)
+                                <p class="mt-1 text-xs text-amber-700">{{ $violation->attempt->student_identifier }}</p>
+                            @endif
                             <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-700">{{ str_replace('_', ' ', $violation->violation_type) }}</p>
                         </div>
                         <form method="POST" action="{{ route('teacher.exams.violations.destroy', [$exam, $violation]) }}" onsubmit="return confirm('Hapus catatan pelanggaran untuk {{ $violation->attempt->participantName() }}?');">

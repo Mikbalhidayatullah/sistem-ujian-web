@@ -177,7 +177,7 @@
     }
 
     .ui-app-shell {
-        @apply relative min-h-screen overflow-hidden;
+        @apply relative min-h-screen overflow-x-hidden;
         background-image: var(--ui-shell-bg);
     }
 
@@ -580,6 +580,256 @@
         background: var(--exam-sticky-bg);
         border-color: var(--exam-sticky-border);
         box-shadow: var(--exam-sticky-shadow);
+    }
+
+    .exam-session-dock {
+        @apply relative;
+        min-height: var(--exam-session-dock-height, auto);
+    }
+
+    .exam-session-dock-stack {
+        @apply space-y-3;
+    }
+
+    .exam-session-dock.is-floating .exam-session-dock-stack {
+        position: fixed;
+        top: var(--exam-session-dock-top, 0.25rem);
+        left: var(--exam-session-dock-left, 1rem);
+        width: var(--exam-session-dock-width, calc(100vw - 2rem));
+        z-index: 45;
+    }
+
+    .exam-timer-dock {
+        @apply flex flex-col gap-4 rounded-[1.5rem] border px-4 py-4 backdrop-blur md:flex-row md:items-center md:justify-between sm:px-5;
+        background: var(--exam-sticky-bg);
+        border-color: var(--exam-sticky-border);
+        box-shadow: var(--exam-sticky-shadow);
+    }
+
+    .exam-question-nav-dock {
+        @apply rounded-[1.5rem] border px-4 py-4 backdrop-blur sm:px-5;
+        background: var(--exam-sticky-bg);
+        border-color: var(--exam-sticky-border);
+        box-shadow: var(--exam-sticky-shadow);
+    }
+
+    .exam-dock-label {
+        @apply text-[0.7rem] tracking-[0.28em];
+    }
+
+    .exam-dock-copy {
+        @apply transition;
+    }
+
+    .exam-chip-countdown {
+        @apply px-4 py-3 text-base font-black sm:text-lg;
+    }
+
+    .exam-question-nav-track {
+        @apply mt-4 flex gap-2 overflow-x-auto pb-1;
+        scrollbar-width: thin;
+    }
+
+    .exam-question-nav-toggle {
+        @apply items-center justify-center rounded-xl;
+    }
+
+    .exam-question-nav-button {
+        @apply inline-flex h-11 min-w-[2.75rem] items-center justify-center rounded-2xl border px-3 text-sm font-bold transition;
+        background: var(--exam-option-bg);
+        border-color: var(--exam-option-border);
+        color: var(--ui-text);
+    }
+
+    .exam-question-nav-button:hover {
+        border-color: var(--exam-option-hover-border);
+        transform: translateY(-1px);
+    }
+
+    .exam-question-nav-button.is-answered {
+        background: var(--ui-success-soft);
+        border-color: var(--ui-success-border);
+        color: var(--ui-success-text);
+    }
+
+    .exam-question-nav-button.is-active {
+        background: rgba(14, 165, 233, 0.16);
+        border-color: rgba(14, 165, 233, 0.34);
+        color: var(--ui-accent-strong);
+        box-shadow: 0 12px 28px rgba(14, 165, 233, 0.14);
+    }
+
+    .exam-question-nav-action[disabled],
+    .exam-question-nav-action.is-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .exam-session-dock.is-condensed .exam-session-dock-stack {
+        @apply space-y-1;
+    }
+
+    .exam-session-dock.is-condensed .exam-timer-dock,
+    .exam-session-dock.is-condensed .exam-question-nav-dock {
+        @apply rounded-[1.15rem] px-3 py-2;
+    }
+
+    .exam-session-dock.is-condensed .exam-dock-copy,
+    .exam-session-dock.is-condensed .exam-dock-label,
+    .exam-session-dock.is-condensed .exam-dock-hint {
+        @apply hidden;
+    }
+
+    .exam-session-dock.is-condensed .exam-dock-actions {
+        @apply mt-1;
+    }
+
+    .exam-session-dock.is-condensed .exam-chip-countdown {
+        @apply px-3 py-1.5 text-sm sm:text-base;
+    }
+
+    .exam-session-dock.is-condensed .exam-question-nav-track {
+        @apply mt-1;
+    }
+
+    .exam-session-dock.is-condensed .exam-question-nav-button {
+        @apply h-9 min-w-[2.35rem] rounded-xl text-xs;
+    }
+
+    .exam-session-dock.is-condensed .exam-question-nav-action {
+        @apply px-3 py-2 text-[0.7rem];
+    }
+
+    .exam-session-dock.is-condensed .exam-timer-dock {
+        @apply gap-2;
+    }
+
+    .exam-session-dock.is-condensed .exam-dock-label {
+        @apply text-[0.62rem] tracking-[0.24em];
+    }
+
+    .exam-session-dock.is-condensed .exam-timer-meta {
+        @apply hidden;
+    }
+
+    @media (min-width: 768px) {
+        .exam-session-dock.is-condensed .exam-session-dock-stack {
+            display: grid;
+            grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr);
+            gap: 0.5rem;
+            align-items: start;
+        }
+
+        .exam-session-dock.is-condensed .exam-question-nav-dock {
+            min-height: 100%;
+        }
+
+        .exam-session-dock.is-condensed .exam-question-nav-dock > div:first-child {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+    }
+
+    .exam-chip[data-countdown-state='warning'] {
+        background: rgba(245, 158, 11, 0.16);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #b45309;
+        box-shadow: 0 12px 28px rgba(245, 158, 11, 0.16);
+    }
+
+    .exam-chip[data-countdown-state='danger'] {
+        background: rgba(244, 63, 94, 0.16);
+        border-color: rgba(244, 63, 94, 0.32);
+        color: #be123c;
+        box-shadow: 0 12px 28px rgba(244, 63, 94, 0.18);
+        animation: examTimerPulse 1.4s ease-in-out infinite;
+    }
+
+    .exam-chip[data-countdown-state='critical'] {
+        background: linear-gradient(135deg, rgba(225, 29, 72, 0.22), rgba(249, 115, 22, 0.22));
+        border-color: rgba(244, 63, 94, 0.46);
+        color: #9f1239;
+        box-shadow: 0 16px 32px rgba(225, 29, 72, 0.24);
+        animation: examTimerCriticalPulse 0.9s ease-in-out infinite;
+    }
+
+    .exam-timer-dock[data-countdown-state='warning'] {
+        border-color: rgba(245, 158, 11, 0.34);
+        box-shadow: 0 22px 48px rgba(245, 158, 11, 0.14);
+    }
+
+    .exam-timer-dock[data-countdown-state='danger'] {
+        border-color: rgba(244, 63, 94, 0.4);
+        box-shadow: 0 24px 54px rgba(244, 63, 94, 0.2);
+    }
+
+    .exam-timer-dock[data-countdown-state='critical'] {
+        border-color: rgba(244, 63, 94, 0.52);
+        box-shadow: 0 28px 60px rgba(225, 29, 72, 0.28);
+    }
+
+    html[data-theme='dark'] .theme-surface .exam-question-nav-button.is-active {
+        background: rgba(34, 211, 238, 0.18);
+        border-color: rgba(34, 211, 238, 0.34);
+        color: #cffafe;
+        box-shadow: 0 12px 28px rgba(34, 211, 238, 0.16);
+    }
+
+    .exam-timer-dock [data-countdown][data-countdown-state='critical'] {
+        font-size: 1.1rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+
+    .exam-chip-countdown [data-countdown] {
+        font-size: 1.05em;
+        font-weight: 900;
+        letter-spacing: 0.01em;
+    }
+
+    @media (max-width: 640px) {
+        .exam-question-nav-dock[data-mobile-collapsed='true'] .exam-question-nav-track {
+            display: none;
+        }
+
+        .exam-question-nav-dock[data-mobile-collapsed='true'] .exam-dock-copy {
+            display: none;
+        }
+
+        .exam-question-nav-dock[data-mobile-collapsed='true'] .exam-dock-actions {
+            margin-top: 0.75rem;
+        }
+
+        .exam-question-nav-dock[data-mobile-collapsed='true'] {
+            padding-bottom: 0.9rem;
+        }
+    }
+
+    @keyframes examTimerPulse {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.02);
+        }
+    }
+
+    @keyframes examTimerCriticalPulse {
+        0%,
+        100% {
+            transform: scale(1);
+            filter: saturate(1);
+        }
+
+        50% {
+            transform: scale(1.04);
+            filter: saturate(1.12);
+        }
     }
 
     .exam-modal-card {

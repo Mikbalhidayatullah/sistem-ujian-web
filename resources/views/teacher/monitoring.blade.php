@@ -136,6 +136,9 @@
                                         {{ str_replace('_', ' ', $violation->violation_type) }}
                                     </span>
                                 </div>
+                                @if ($violation->attempt->student_identifier)
+                                    <p class="mt-2 text-xs font-semibold text-slate-500">{{ $violation->attempt->student_identifier }}</p>
+                                @endif
                                 <p class="mt-2 text-sm font-semibold text-amber-900">{{ $violation->attempt->exam->title }}</p>
                                 <p class="mt-1 text-xs uppercase tracking-[0.24em] text-amber-700/80">{{ $violation->attempt->exam->subject->display_name }}</p>
                             </div>

@@ -69,6 +69,7 @@ class ExamController extends Controller
             'duration_minutes' => $data['duration_minutes'],
             'max_violations' => $data['max_violations'],
             'is_active' => $request->boolean('is_active'),
+            'violations_enabled' => $request->boolean('violations_enabled', true),
         ]);
 
         return redirect()
@@ -95,6 +96,7 @@ class ExamController extends Controller
             'duration_minutes' => $data['duration_minutes'],
             'max_violations' => $data['max_violations'],
             'is_active' => $request->boolean('is_active'),
+            'violations_enabled' => $request->boolean('violations_enabled', true),
         ]);
 
         return redirect()
@@ -230,6 +232,28 @@ class ExamController extends Controller
             $shouldOpen
                 ? 'Akses ujian dibuka secara manual. Siswa tetap harus sesuai jadwal jika tanggal ujian diisi.'
                 : 'Akses ujian ditutup secara manual.'
+        );
+    }
+
+    public function toggleViolations(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['enable', 'disable'])],
+        ]);
+
+        $shouldEnable = $data['action'] === 'enable';
+
+        $exam->update([
+            'violations_enabled' => $shouldEnable,
+        ]);
+
+        return back()->with(
+            'status',
+            $shouldEnable
+                ? 'Pencatatan pelanggaran diaktifkan lagi untuk ujian ini.'
+                : 'Pencatatan pelanggaran dimatikan. Mode ini cocok untuk ujian open book atau sesi yang lebih fleksibel.'
         );
     }
 

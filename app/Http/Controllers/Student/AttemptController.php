@@ -97,8 +97,14 @@ class AttemptController extends Controller
     {
         $data = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
+            'student_identifier' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9\-]+$/'],
             'access_token' => ['required', 'string', 'min:4', 'max:20', 'alpha_num'],
             'access_pin' => ['required', 'string', 'size:6', 'digits:6'],
+        ], [
+            'student_identifier.required' => 'NIS, NISN, atau nomor absen wajib diisi.',
+            'student_identifier.min' => 'Identitas siswa minimal 3 karakter.',
+            'student_identifier.max' => 'Identitas siswa maksimal 30 karakter.',
+            'student_identifier.regex' => 'Identitas siswa hanya boleh berisi huruf, angka, atau tanda hubung.',
         ]);
 
         $exam = Exam::query()
@@ -115,7 +121,12 @@ class AttemptController extends Controller
         abort_unless($exam->questions()->exists(), 422, 'Ujian belum memiliki soal.');
         abort_unless($exam->isOpenNow(), 422, 'Ujian belum dibuka atau sudah berakhir.');
 
-        $attempt = $this->resolveOrCreateAttempt($request, $exam, $data['full_name']);
+        $attempt = $this->resolveOrCreateAttempt(
+            $request,
+            $exam,
+            $data['full_name'],
+            $this->normalizeStudentIdentifier($data['student_identifier'])
+        );
         $this->grantSessionAccess($request, $attempt);
 
         return redirect()->route('exam.attempts.show', $attempt);
@@ -203,11 +214,23 @@ class AttemptController extends Controller
     public function recordViolation(Request $request, ExamAttempt $attempt): JsonResponse
     {
         $this->authorizeStudentAttempt($request, $attempt);
+        $attempt->loadMissing('exam');
 
         if ($attempt->isSubmitted()) {
             return response()->json([
                 'recorded' => false,
                 'auto_submit' => false,
+                'redirect_url' => route('exam.attempts.result', $attempt),
+            ]);
+        }
+
+        if (! $attempt->exam->violations_enabled) {
+            $attempt->update(['last_activity_at' => now()]);
+
+            return response()->json([
+                'recorded' => false,
+                'auto_submit' => false,
+                'disabled' => true,
                 'redirect_url' => route('exam.attempts.result', $attempt),
             ]);
         }
@@ -248,9 +271,9 @@ class AttemptController extends Controller
         ]);
     }
 
-    protected function resolveOrCreateAttempt(Request $request, Exam $exam, string $fullName): ExamAttempt
+    protected function resolveOrCreateAttempt(Request $request, Exam $exam, string $fullName, string $studentIdentifier): ExamAttempt
     {
-        $participantKey = $this->participantKey($exam->id, $fullName);
+        $participantKey = $this->participantKey($exam->id, $studentIdentifier);
         $existingAttemptId = $request->session()->get("guest_attempts.$participantKey");
 
         if ($existingAttemptId) {
@@ -262,15 +285,36 @@ class AttemptController extends Controller
             if ($existingAttempt && ! $existingAttempt->isSubmitted()) {
                 return $existingAttempt;
             }
+        }
 
-            if ($existingAttempt) {
-                return $existingAttempt;
+        $attemptByIdentifier = ExamAttempt::query()
+            ->where('exam_id', $exam->id)
+            ->where('student_identifier', $studentIdentifier)
+            ->latest('id')
+            ->first();
+
+        if ($attemptByIdentifier) {
+            $request->session()->put("guest_attempts.$participantKey", $attemptByIdentifier->id);
+
+            if (! $attemptByIdentifier->isSubmitted()) {
+                if ($attemptByIdentifier->student_name !== $fullName) {
+                    $attemptByIdentifier->update([
+                        'student_name' => $fullName,
+                    ]);
+                }
+
+                return $attemptByIdentifier->fresh();
             }
+
+            throw ValidationException::withMessages([
+                'student_identifier' => 'Identitas siswa ini sudah dipakai untuk menyelesaikan ujian dan tidak bisa masuk lagi.',
+            ]);
         }
 
         $attempt = ExamAttempt::create([
             'exam_id' => $exam->id,
             'student_name' => $fullName,
+            'student_identifier' => $studentIdentifier,
             'started_at' => now(),
             'last_activity_at' => now(),
             'status' => ExamAttempt::STATUS_IN_PROGRESS,
@@ -293,6 +337,11 @@ class AttemptController extends Controller
     protected function participantKey(int $examId, string $fullName): string
     {
         return md5($examId.'|'.Str::lower(trim($fullName)));
+    }
+
+    protected function normalizeStudentIdentifier(string $studentIdentifier): string
+    {
+        return Str::upper(trim($studentIdentifier));
     }
 
     protected function validatedAnswers(Request $request, ExamAttempt $attempt): array

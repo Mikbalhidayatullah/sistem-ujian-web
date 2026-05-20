@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/exams/{exam}', [TeacherExamController::class, 'show'])->name('exams.show');
         Route::get('/exams/{exam}/export-scores', [TeacherExamController::class, 'exportScores'])->name('exams.export-scores');
         Route::post('/exams/{exam}/access', [TeacherExamController::class, 'toggleAccess'])->name('exams.access');
+        Route::post('/exams/{exam}/violations/toggle', [TeacherExamController::class, 'toggleViolations'])->name('exams.violations.toggle');
         Route::post('/exams/{exam}/questions/import-template', [TeacherExamController::class, 'importTemplate'])->name('exams.questions.import-template');
         Route::post('/exams/{exam}/questions', [TeacherExamController::class, 'storeQuestion'])->name('exams.questions.store');
         Route::match(['put', 'patch'], '/exams/{exam}/questions/default-points', [TeacherExamController::class, 'updateDefaultPoints'])

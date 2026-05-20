@@ -20,6 +20,7 @@ class ExamAttempt extends Model
         'exam_id',
         'student_id',
         'student_name',
+        'student_identifier',
         'started_at',
         'submitted_at',
         'status',

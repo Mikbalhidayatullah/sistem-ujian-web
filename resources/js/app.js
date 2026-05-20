@@ -448,19 +448,37 @@ const initExamSession = () => {
     }
 
     const form = document.getElementById('exam-form');
-    const fullscreenButton = root.querySelector('[data-fullscreen-button]');
     const countdownTargets = document.querySelectorAll('[data-countdown]');
+    const appHeader = document.querySelector('.ui-app-header');
+    const examHero = root.querySelector('[data-exam-hero]');
+    const examSessionDock = root.querySelector('[data-exam-session-dock]');
+    const examSessionDockStack = root.querySelector('[data-exam-session-dock-stack]');
+    const questionCards = root.querySelectorAll('[data-question-card]');
+    const questionNavButtons = root.querySelectorAll('[data-question-nav-button]');
+    const questionNavDock = root.querySelector('[data-question-nav]');
+    const questionNavTrack = root.querySelector('[data-question-nav-track]');
+    const questionNavToggle = root.querySelector('[data-question-nav-toggle]');
+    const questionNavToggleLabel = root.querySelector('[data-question-nav-toggle-label]');
+    const previousQuestionButton = root.querySelector('[data-question-nav-prev]');
+    const nextQuestionButton = root.querySelector('[data-question-nav-next]');
     const submitModal = root.querySelector('[data-submit-modal]');
     const submitModalMessage = root.querySelector('[data-submit-modal-message]');
     const submitConfirmButton = root.querySelector('[data-submit-confirm]');
     const submitCancelButton = root.querySelector('[data-submit-cancel]');
     const saveUrl = root.dataset.saveUrl;
     const violationUrl = root.dataset.violationUrl;
+    const violationsEnabled = root.dataset.violationsEnabled !== '0';
     const expiresAt = root.dataset.expiresAt ? new Date(root.dataset.expiresAt) : null;
     const totalQuestions = Number(root.dataset.totalQuestions || 0);
+    const questionIds = Array.from(questionCards).map((card) => card.dataset.questionId);
     let isSubmitting = false;
     let isRecordingViolation = false;
     let hasConfirmedSubmit = false;
+    let activeQuestionId = questionIds[0] ?? null;
+    let fullscreenRequested = false;
+    let isQuestionNavExpanded = false;
+    let pendingNavigationQuestionId = null;
+    let pendingNavigationTimer = null;
 
     const collectAnswers = () => {
         const payload = {};
@@ -475,6 +493,139 @@ const initExamSession = () => {
         }
 
         return payload;
+    };
+
+    const syncQuestionNavState = () => {
+        const answers = collectAnswers();
+
+        questionNavButtons.forEach((button) => {
+            const questionId = button.dataset.questionId;
+            const isAnswered = Boolean(answers[questionId]);
+
+            button.classList.toggle('is-answered', isAnswered);
+        });
+    };
+
+    const setActiveQuestion = (questionId) => {
+        activeQuestionId = String(questionId);
+
+        questionNavButtons.forEach((button) => {
+            button.classList.toggle('is-active', button.dataset.questionId === activeQuestionId);
+        });
+
+        const activeIndex = questionIds.indexOf(activeQuestionId);
+        const isFirst = activeIndex <= 0;
+        const isLast = activeIndex === -1 || activeIndex >= questionIds.length - 1;
+
+        previousQuestionButton?.toggleAttribute('disabled', isFirst);
+        previousQuestionButton?.classList.toggle('is-disabled', isFirst);
+        nextQuestionButton?.toggleAttribute('disabled', isLast);
+        nextQuestionButton?.classList.toggle('is-disabled', isLast);
+    };
+
+    const getDockOffset = () => {
+        const headerHeight = appHeader?.getBoundingClientRect().height ?? 0;
+        const dockHeight = examSessionDock?.getBoundingClientRect().height ?? 0;
+
+        return headerHeight + dockHeight + 20;
+    };
+
+    const scrollToQuestion = (questionId) => {
+        const targetCard = root.querySelector(`[data-question-card][data-question-id="${questionId}"]`);
+
+        if (!targetCard) {
+            return;
+        }
+
+        pendingNavigationQuestionId = String(questionId);
+        window.clearTimeout(pendingNavigationTimer);
+        setActiveQuestion(questionId);
+
+        const targetTop = window.scrollY + targetCard.getBoundingClientRect().top - getDockOffset();
+
+        window.scrollTo({
+            top: Math.max(targetTop, 0),
+            behavior: 'smooth',
+        });
+
+        pendingNavigationTimer = window.setTimeout(() => {
+            setActiveQuestion(questionId);
+            pendingNavigationQuestionId = null;
+        }, 450);
+    };
+
+    const getCurrentQuestionId = () => {
+        const dockOffset = getDockOffset();
+        const visibleCards = Array.from(questionCards)
+            .map((card) => ({
+                id: card.dataset.questionId,
+                top: card.getBoundingClientRect().top,
+            }))
+            .filter((card) => card.top >= dockOffset - 24);
+
+        if (visibleCards.length > 0) {
+            return visibleCards[0].id;
+        }
+
+        const nearestCard = Array.from(questionCards)
+            .map((card) => ({
+                id: card.dataset.questionId,
+                distance: Math.abs(card.getBoundingClientRect().top - dockOffset),
+            }))
+            .sort((left, right) => left.distance - right.distance)[0];
+
+        return nearestCard?.id ?? activeQuestionId;
+    };
+
+    const isMobileViewport = () => window.innerWidth < 640;
+
+    const syncQuestionNavVisibility = () => {
+        if (!questionNavDock || !questionNavToggle || !questionNavTrack) {
+            return;
+        }
+
+        if (!isMobileViewport()) {
+            questionNavDock.dataset.mobileCollapsed = 'false';
+            questionNavToggle.setAttribute('aria-expanded', 'true');
+            if (questionNavToggleLabel) {
+                questionNavToggleLabel.textContent = 'Tampilkan nomor';
+            }
+            return;
+        }
+
+        const collapsed = !isQuestionNavExpanded;
+        questionNavDock.dataset.mobileCollapsed = collapsed ? 'true' : 'false';
+        questionNavToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+
+        if (questionNavToggleLabel) {
+            questionNavToggleLabel.textContent = collapsed ? 'Tampilkan nomor' : 'Sembunyikan nomor';
+        }
+    };
+
+    const syncDockState = () => {
+        if (!examHero || !examSessionDock || !examSessionDockStack) {
+            return;
+        }
+
+        const heroRect = examHero.getBoundingClientRect();
+        const dockTop = isMobileViewport() ? 2 : 4;
+        const shouldFloat = heroRect.bottom <= dockTop;
+
+        examSessionDock.style.setProperty('--exam-session-dock-top', `${dockTop}px`);
+        examSessionDock.classList.toggle('is-floating', shouldFloat);
+        examSessionDock.classList.toggle('is-condensed', shouldFloat);
+
+        if (shouldFloat) {
+            const dockRect = examSessionDock.getBoundingClientRect();
+
+            examSessionDock.style.setProperty('--exam-session-dock-left', `${dockRect.left}px`);
+            examSessionDock.style.setProperty('--exam-session-dock-width', `${dockRect.width}px`);
+            examSessionDock.style.setProperty('--exam-session-dock-height', `${examSessionDockStack.getBoundingClientRect().height}px`);
+        } else {
+            examSessionDock.style.removeProperty('--exam-session-dock-left');
+            examSessionDock.style.removeProperty('--exam-session-dock-width');
+            examSessionDock.style.removeProperty('--exam-session-dock-height');
+        }
     };
 
     const playAlarm = () => {
@@ -544,7 +695,7 @@ const initExamSession = () => {
     };
 
     const recordViolation = async (violationType, detail) => {
-        if (isSubmitting || isRecordingViolation) {
+        if (!violationsEnabled || isSubmitting || isRecordingViolation) {
             return;
         }
 
@@ -570,13 +721,16 @@ const initExamSession = () => {
     };
 
     const requestFullscreen = async () => {
-        if (document.fullscreenElement) {
+        if (document.fullscreenElement || fullscreenRequested) {
             return;
         }
+
+        fullscreenRequested = true;
 
         try {
             await document.documentElement.requestFullscreen();
         } catch (error) {
+            fullscreenRequested = false;
             console.error('Fullscreen ditolak', error);
         }
     };
@@ -600,15 +754,97 @@ const initExamSession = () => {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
+        const countdownState = totalSeconds <= 60
+            ? 'critical'
+            : (totalSeconds <= 300
+                ? 'danger'
+                : (totalSeconds <= 900 ? 'warning' : 'normal'));
 
         const timeText = `Sisa waktu ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
         countdownTargets.forEach((target) => {
             target.textContent = timeText;
+            target.dataset.countdownState = countdownState;
+            target.closest('.exam-chip')?.setAttribute('data-countdown-state', countdownState);
+            target.closest('.exam-timer-dock')?.setAttribute('data-countdown-state', countdownState);
         });
     };
 
-    fullscreenButton?.addEventListener('click', requestFullscreen);
+    questionNavButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            scrollToQuestion(button.dataset.questionId);
+
+            if (isMobileViewport()) {
+                isQuestionNavExpanded = false;
+                syncQuestionNavVisibility();
+            }
+        });
+    });
+
+    previousQuestionButton?.addEventListener('click', () => {
+        const currentQuestionId = getCurrentQuestionId();
+        const activeIndex = questionIds.indexOf(String(currentQuestionId));
+
+        if (activeIndex > 0) {
+            scrollToQuestion(questionIds[activeIndex - 1]);
+        }
+    });
+
+    nextQuestionButton?.addEventListener('click', () => {
+        const currentQuestionId = getCurrentQuestionId();
+        const activeIndex = questionIds.indexOf(String(currentQuestionId));
+
+        if (activeIndex !== -1 && activeIndex < questionIds.length - 1) {
+            scrollToQuestion(questionIds[activeIndex + 1]);
+        }
+    });
+
+    questionNavToggle?.addEventListener('click', () => {
+        if (!isMobileViewport()) {
+            return;
+        }
+
+        isQuestionNavExpanded = !isQuestionNavExpanded;
+        syncQuestionNavVisibility();
+    });
+
+    form.querySelectorAll('input[type="radio"][name^="answers["]').forEach((input) => {
+        input.addEventListener('change', syncQuestionNavState);
+    });
+
+    if (questionCards.length > 0 && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            const visibleEntry = entries
+                .filter((entry) => entry.isIntersecting)
+                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+            if (visibleEntry) {
+                const visibleQuestionId = String(visibleEntry.target.dataset.questionId);
+
+                if (pendingNavigationQuestionId && visibleQuestionId !== pendingNavigationQuestionId) {
+                    return;
+                }
+
+                setActiveQuestion(visibleEntry.target.dataset.questionId);
+            }
+        }, {
+            root: null,
+            threshold: [0.2, 0.45, 0.7],
+            rootMargin: '-20% 0px -55% 0px',
+        });
+
+        questionCards.forEach((card) => observer.observe(card));
+        setActiveQuestion(questionCards[0].dataset.questionId);
+    }
+
+    if (examHero && examSessionDock) {
+        syncDockState();
+        window.addEventListener('scroll', syncDockState, { passive: true });
+        window.addEventListener('resize', syncDockState);
+    }
+
+    window.addEventListener('resize', syncQuestionNavVisibility);
 
     form.addEventListener('submit', async (event) => {
         if (hasConfirmedSubmit || isSubmitting) {
@@ -652,31 +888,45 @@ const initExamSession = () => {
         });
     });
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            recordViolation('tab_hidden', 'Siswa berpindah tab atau aplikasi.');
+    const requestFullscreenOnFirstInteraction = () => {
+        if (document.fullscreenElement) {
+            return;
         }
+
+        void requestFullscreen();
+    };
+
+    ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+        document.addEventListener(eventName, requestFullscreenOnFirstInteraction, { once: true, passive: true });
     });
 
-    window.addEventListener('blur', () => {
-        recordViolation('window_blur', 'Jendela ujian kehilangan fokus.');
-    });
+    if (violationsEnabled) {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                recordViolation('tab_hidden', 'Siswa berpindah tab atau aplikasi.');
+            }
+        });
 
-    document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement && !isSubmitting) {
-            recordViolation('fullscreen_exit', 'Siswa keluar dari mode full-screen.');
-        }
-    });
+        window.addEventListener('blur', () => {
+            recordViolation('window_blur', 'Jendela ujian kehilangan fokus.');
+        });
 
-    document.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        recordViolation('context_menu', 'Percobaan membuka context menu.');
-    });
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && !isSubmitting) {
+                recordViolation('fullscreen_exit', 'Siswa keluar dari mode full-screen.');
+            }
+        });
 
-    document.addEventListener('copy', (event) => {
-        event.preventDefault();
-        recordViolation('copy_attempt', 'Percobaan menyalin isi ujian.');
-    });
+        document.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            recordViolation('context_menu', 'Percobaan membuka context menu.');
+        });
+
+        document.addEventListener('copy', (event) => {
+            event.preventDefault();
+            recordViolation('copy_attempt', 'Percobaan menyalin isi ujian.');
+        });
+    }
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && submitModal && !submitModal.classList.contains('hidden')) {
@@ -691,12 +941,14 @@ const initExamSession = () => {
 
         if (blocked) {
             event.preventDefault();
-            recordViolation('blocked_shortcut', `Shortcut terlarang: ${event.key}`);
+            if (violationsEnabled) {
+                recordViolation('blocked_shortcut', `Shortcut terlarang: ${event.key}`);
+            }
         }
     });
 
     window.addEventListener('beforeunload', () => {
-        if (isSubmitting) {
+        if (isSubmitting || !violationsEnabled) {
             return;
         }
 
@@ -719,6 +971,9 @@ const initExamSession = () => {
 
     requestFullscreen();
     updateCountdown();
+    syncQuestionNavState();
+    syncDockState();
+    syncQuestionNavVisibility();
     window.setInterval(updateCountdown, 1000);
     window.setInterval(saveProgress, 15000);
 };

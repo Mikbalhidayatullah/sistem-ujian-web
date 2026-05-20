@@ -23,6 +23,7 @@ class Exam extends Model
         'duration_minutes',
         'max_violations',
         'is_active',
+        'violations_enabled',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class Exam extends Model
             'start_at' => 'datetime',
             'end_at' => 'datetime',
             'is_active' => 'boolean',
+            'violations_enabled' => 'boolean',
         ];
     }
 
