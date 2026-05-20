@@ -48,6 +48,11 @@ class User extends Authenticatable
         return $this->hasMany(Exam::class, 'teacher_id');
     }
 
+    public function printSetting()
+    {
+        return $this->hasOne(TeacherPrintSetting::class, 'teacher_id');
+    }
+
     public function attempts()
     {
         return $this->hasMany(ExamAttempt::class, 'student_id');

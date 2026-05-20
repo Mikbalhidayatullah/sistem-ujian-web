@@ -1211,6 +1211,74 @@ const initQuestionOptionSelection = () => {
     });
 };
 
+const initPrintSettingsPreview = () => {
+    document.querySelectorAll('[data-print-settings-preview]').forEach((form) => {
+        const schoolNameInput = form.querySelector('[data-print-preview-school-name]');
+        const schoolDepartmentInput = form.querySelector('[data-print-preview-school-department]');
+        const schoolAddressInput = form.querySelector('[data-print-preview-school-address]');
+        const logoInput = form.querySelector('[data-print-preview-logo-input]');
+        const removeLogoInput = form.querySelector('[data-print-preview-remove-logo]');
+        const schoolNameTarget = document.querySelector('[data-print-preview-school-name-target]');
+        const schoolDepartmentTarget = document.querySelector('[data-print-preview-school-department-target]');
+        const schoolAddressTarget = document.querySelector('[data-print-preview-school-address-target]');
+        const logoImage = document.querySelector('[data-print-preview-logo-image]');
+        const logoPlaceholder = document.querySelector('[data-print-preview-logo-placeholder]');
+
+        if (!schoolNameTarget || !schoolDepartmentTarget || !schoolAddressTarget || !logoImage || !logoPlaceholder) {
+            return;
+        }
+
+        const originalLogoSrc = logoImage.dataset.originalSrc || '';
+
+        const syncText = () => {
+            schoolNameTarget.textContent = schoolNameInput?.value.trim() || 'Nama sekolah';
+            schoolDepartmentTarget.textContent = `Jurusan : ${schoolDepartmentInput?.value.trim() || 'Jurusan'}`;
+            schoolAddressTarget.textContent = schoolAddressInput?.value.trim() || 'Alamat sekolah';
+        };
+
+        const showLogoState = (src) => {
+            const hasLogo = Boolean(src);
+
+            if (hasLogo) {
+                logoImage.src = src;
+            }
+
+            logoImage.classList.toggle('hidden', !hasLogo);
+            logoPlaceholder.classList.toggle('hidden', hasLogo);
+        };
+
+        const syncLogo = () => {
+            const shouldRemoveLogo = Boolean(removeLogoInput?.checked);
+            const selectedFile = logoInput?.files?.[0];
+
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    showLogoState(String(event.target?.result || ''));
+                };
+                reader.readAsDataURL(selectedFile);
+                return;
+            }
+
+            if (shouldRemoveLogo) {
+                showLogoState('');
+                return;
+            }
+
+            showLogoState(originalLogoSrc);
+        };
+
+        schoolNameInput?.addEventListener('input', syncText);
+        schoolDepartmentInput?.addEventListener('input', syncText);
+        schoolAddressInput?.addEventListener('input', syncText);
+        logoInput?.addEventListener('change', syncLogo);
+        removeLogoInput?.addEventListener('change', syncLogo);
+
+        syncText();
+        syncLogo();
+    });
+};
+
 initThemeToggle();
 initAutoRefreshCards();
 initScrollTopButton();
@@ -1223,3 +1291,4 @@ initQuestionBuilderTabs();
 initInsightSortSelect();
 initQuestionEditors();
 initQuestionOptionSelection();
+initPrintSettingsPreview();

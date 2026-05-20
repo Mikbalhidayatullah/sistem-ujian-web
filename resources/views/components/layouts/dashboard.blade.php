@@ -13,10 +13,22 @@
             'icon' => 'dashboard',
         ],
         [
-            'label' => 'Kelola Akun Guru',
-            'route' => route('admin.accounts.index'),
+            'label' => 'Kelola Akun',
+            'route' => null,
             'active' => request()->routeIs('admin.accounts.*'),
             'icon' => 'teachers',
+            'children' => [
+                [
+                    'label' => 'Guru',
+                    'route' => route('admin.accounts.index'),
+                    'active' => request()->routeIs('admin.accounts.index'),
+                ],
+                [
+                    'label' => 'Tambahkan akun',
+                    'route' => route('admin.accounts.create'),
+                    'active' => request()->routeIs('admin.accounts.create'),
+                ],
+            ],
         ],
     ];
 
@@ -34,16 +46,41 @@
             'icon' => 'subjects',
         ],
         [
-            'label' => 'Buat Ujian',
-            'route' => route('teacher.exams.create'),
-            'active' => request()->routeIs('teacher.exams.create'),
+            'label' => 'Ujian',
+            'route' => null,
+            'active' => request()->routeIs('teacher.exams.*'),
             'icon' => 'exams',
+            'children' => [
+                [
+                    'label' => 'Daftar ujian',
+                    'route' => route('teacher.exams.index'),
+                    'active' => request()->routeIs('teacher.exams.index') || request()->routeIs('teacher.exams.show'),
+                ],
+                [
+                    'label' => 'Buat ujian',
+                    'route' => route('teacher.exams.create'),
+                    'active' => request()->routeIs('teacher.exams.create') || request()->routeIs('teacher.exams.edit'),
+                ],
+            ],
         ],
         [
             'label' => 'Monitoring',
             'route' => route('teacher.monitoring'),
             'active' => request()->routeIs('teacher.monitoring'),
             'icon' => 'monitoring',
+        ],
+        [
+            'label' => 'Pengaturan',
+            'route' => null,
+            'active' => request()->routeIs('teacher.settings.*'),
+            'icon' => 'settings',
+            'children' => [
+                [
+                    'label' => 'Print',
+                    'route' => route('teacher.settings.print.edit'),
+                    'active' => request()->routeIs('teacher.settings.print.*'),
+                ],
+            ],
         ],
     ];
 
@@ -101,43 +138,78 @@
             <nav class="mt-6 space-y-2">
                 <p class="px-3 text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Navigasi</p>
                 @foreach ($navItems as $item)
-                    <a href="{{ $item['route'] }}" class="{{ $item['active'] ? 'dashboard-nav-link dashboard-nav-link-active' : 'dashboard-nav-link' }}">
-                        <span class="grid h-10 w-10 place-items-center rounded-2xl {{ $item['active'] ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500' }}">
-                            @switch($item['icon'])
-                                @case('dashboard')
-                                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
-                                        <path d="M4.5 5.5h6v6h-6zM13.5 5.5h6v9h-6zM4.5 14.5h6v4h-6zM13.5 17.5h6v1h-6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                    </svg>
-                                    @break
-                                @case('teachers')
-                                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
-                                        <path d="M16 20a4 4 0 0 0-8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                        <circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8"/>
-                                        <path d="M5 18.5c.6-2.1 2.4-3.5 4.5-3.5M19 18.5c-.6-2.1-2.4-3.5-4.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    </svg>
-                                    @break
-                                @case('subjects')
-                                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
-                                        <path d="M6 5.5h8a3 3 0 0 1 3 3V18l-5-2-5 2V5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                        <path d="M9 9.5h5M9 12.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    </svg>
-                                    @break
-                                @case('exams')
-                                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
-                                        <rect x="4" y="5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
-                                        <path d="M8 3.8v2.4M16 3.8v2.4M7.5 10h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    </svg>
-                                    @break
-                                @case('monitoring')
-                                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
-                                        <path d="M4 12c1.7-3.4 4.8-5.5 8-5.5s6.3 2.1 8 5.5c-1.7 3.4-4.8 5.5-8 5.5S5.7 15.4 4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                        <circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-                                    </svg>
-                                    @break
-                            @endswitch
-                        </span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
+                    @if (!empty($item['children']))
+                        <details class="dashboard-nav-group" @if($item['active']) open @endif>
+                            <summary class="{{ $item['active'] ? 'dashboard-nav-link dashboard-nav-link-active' : 'dashboard-nav-link' }}">
+                                <span class="grid h-10 w-10 place-items-center rounded-2xl {{ $item['active'] ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500' }}">
+                                    @switch($item['icon'])
+                                        @case('teachers')
+                                            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                                <path d="M16 20a4 4 0 0 0-8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                                <circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8"/>
+                                                <path d="M5 18.5c.6-2.1 2.4-3.5 4.5-3.5M19 18.5c-.6-2.1-2.4-3.5-4.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                            </svg>
+                                            @break
+                                        @case('exams')
+                                            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                                <rect x="4" y="5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+                                                <path d="M8 3.8v2.4M16 3.8v2.4M7.5 10h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                            </svg>
+                                            @break
+                                        @case('settings')
+                                            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                                <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z" stroke="currentColor" stroke-width="1.8"/>
+                                                <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.2 1.2a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9v.2a1.2 1.2 0 0 1-1.2 1.2h-1.7a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.2-1.2a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6h-.2A1.2 1.2 0 0 1 2 13.8v-1.7A1.2 1.2 0 0 1 3.2 10.9h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1L4 9.1a1.2 1.2 0 0 1 0-1.7l1.2-1.2a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9v-.2A1.2 1.2 0 0 1 9.9 4h1.7a1.2 1.2 0 0 1 1.2 1.2v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0L18 7.2a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a1.2 1.2 0 0 1 1.2 1.2v1.7a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                                            </svg>
+                                            @break
+                                    @endswitch
+                                </span>
+                                <span class="flex-1">{{ $item['label'] }}</span>
+                                <svg viewBox="0 0 24 24" class="dashboard-nav-caret h-4 w-4" fill="none" aria-hidden="true">
+                                    <path d="m8 10 4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </summary>
+
+                            <div class="dashboard-nav-children">
+                                @foreach ($item['children'] as $child)
+                                    <a href="{{ $child['route'] }}" class="{{ $child['active'] ? 'dashboard-nav-sublink dashboard-nav-sublink-active' : 'dashboard-nav-sublink' }}">
+                                        <span>{{ $child['label'] }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </details>
+                    @else
+                        <a href="{{ $item['route'] }}" class="{{ $item['active'] ? 'dashboard-nav-link dashboard-nav-link-active' : 'dashboard-nav-link' }}">
+                            <span class="grid h-10 w-10 place-items-center rounded-2xl {{ $item['active'] ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500' }}">
+                                @switch($item['icon'])
+                                    @case('dashboard')
+                                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                            <path d="M4.5 5.5h6v6h-6zM13.5 5.5h6v9h-6zM4.5 14.5h6v4h-6zM13.5 17.5h6v1h-6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                        </svg>
+                                        @break
+                                    @case('subjects')
+                                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                            <path d="M6 5.5h8a3 3 0 0 1 3 3V18l-5-2-5 2V5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                            <path d="M9 9.5h5M9 12.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        </svg>
+                                        @break
+                                    @case('exams')
+                                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                            <rect x="4" y="5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+                                            <path d="M8 3.8v2.4M16 3.8v2.4M7.5 10h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        </svg>
+                                        @break
+                                    @case('monitoring')
+                                        <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                                            <path d="M4 12c1.7-3.4 4.8-5.5 8-5.5s6.3 2.1 8 5.5c-1.7 3.4-4.8 5.5-8 5.5S5.7 15.4 4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+                                        </svg>
+                                        @break
+                                @endswitch
+                            </span>
+                            <span>{{ $item['label'] }}</span>
+                        </a>
+                    @endif
                 @endforeach
             </nav>
 

@@ -115,6 +115,32 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function createAccount(): View
+    {
+        return view('admin.accounts-create');
+    }
+
+    public function storeAccount(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_TEACHER])],
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
+        ]);
+
+        User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $data['role'],
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect()
+            ->route('admin.accounts.create')
+            ->with('status', 'Akun baru berhasil dibuat.');
+    }
+
     public function storeTeacher(Request $request): RedirectResponse
     {
         $data = $request->validate([

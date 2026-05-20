@@ -22,6 +22,9 @@
                 <a href="{{ route('teacher.exams.edit', $exam) }}" class="dashboard-button-return">
                     Edit ujian
                 </a>
+                <a href="{{ route('teacher.exams.print', $exam) }}" target="_blank" rel="noopener" class="dashboard-button-soft">
+                    Print
+                </a>
                 <form method="POST" action="{{ route('teacher.exams.access', $exam) }}">
                     @csrf
                     <input type="hidden" name="action" value="{{ $exam->isManuallyOpen() ? 'close' : 'open' }}">

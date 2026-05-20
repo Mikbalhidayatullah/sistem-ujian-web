@@ -8,6 +8,7 @@ use App\Models\ExamAttempt;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Models\ExamViolation;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,20 +17,29 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class ExamController extends Controller
 {
+    public function index(): View
+    {
+        $teacher = auth()->user();
+
+        return view('teacher.exams.index', [
+            'exams' => $teacher->exams()
+                ->with('subject')
+                ->withCount(['questions', 'attempts'])
+                ->latest()
+                ->get(),
+        ]);
+    }
+
     public function create(): View
     {
         $teacher = auth()->user();
 
         return view('teacher.exams.create', [
             'subjects' => $teacher->subjects()->latest()->get(),
-            'exams' => $teacher->exams()
-                ->with('subject')
-                ->withCount(['questions', 'attempts'])
-                ->latest()
-                ->get(),
             'editingExam' => null,
         ]);
     }
@@ -42,11 +52,6 @@ class ExamController extends Controller
 
         return view('teacher.exams.create', [
             'subjects' => $teacher->subjects()->latest()->get(),
-            'exams' => $teacher->exams()
-                ->with('subject')
-                ->withCount(['questions', 'attempts'])
-                ->latest()
-                ->get(),
             'editingExam' => $exam->load('subject'),
         ]);
     }
@@ -164,7 +169,7 @@ class ExamController extends Controller
         });
 
         return redirect()
-            ->route('teacher.exams.create')
+            ->route('teacher.exams.index')
             ->with('status', 'Ujian berhasil dihapus.');
     }
 
@@ -211,6 +216,32 @@ class ExamController extends Controller
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    public function printSheet(Exam $exam): View
+    {
+        abort_unless($exam->teacher_id === auth()->id(), 403);
+
+        return view('teacher.exams.printable', [
+            ...$this->buildPrintableExamViewData($exam),
+            'autoPrint' => true,
+        ]);
+    }
+
+    public function downloadPdf(Exam $exam): Response
+    {
+        abort_unless($exam->teacher_id === auth()->id(), 403);
+
+        $viewData = [
+            ...$this->buildPrintableExamViewData($exam),
+            'autoPrint' => false,
+        ];
+
+        $filename = 'soal-ujian-'.str($exam->title)->slug('-').'.pdf';
+
+        return Pdf::loadView('teacher.exams.printable', $viewData)
+            ->setPaper('a4')
+            ->download($filename);
     }
 
     public function toggleAccess(Request $request, Exam $exam): RedirectResponse
@@ -833,5 +864,115 @@ class ExamController extends Controller
             'duration_minutes' => 'durasi ujian',
             'max_violations' => 'batas pelanggaran',
         ]);
+    }
+
+    private function buildPrintableExamViewData(Exam $exam): array
+    {
+        $exam->loadMissing([
+            'subject',
+            'teacher',
+            'teacher.printSetting',
+            'questions.options',
+        ]);
+
+        $printSetting = $exam->teacher->printSetting;
+
+        $questions = $exam->questions
+            ->sortBy('position')
+            ->values()
+            ->map(function (Question $question) {
+                $options = $question->options
+                    ->sortBy('position')
+                    ->values()
+                    ->map(function ($option) {
+                        return [
+                            'label' => chr(64 + (int) $option->position),
+                            'text' => $option->option_text,
+                            'is_correct' => $option->is_correct,
+                        ];
+                    });
+
+                $correctOption = $options->firstWhere('is_correct', true);
+
+                return [
+                    'number' => $question->position,
+                    'prompt' => $question->prompt,
+                    'points' => $question->points,
+                    'media_type' => $question->media_type,
+                    'media_data_uri' => $this->buildPrintableQuestionMediaDataUri($question),
+                    'media_note' => $question->hasMedia() && $question->media_type !== 'image'
+                        ? 'Media video tersedia pada versi digital ujian.'
+                        : null,
+                    'options' => $options,
+                    'answer_key' => $correctOption['label'] ?? '-',
+                ];
+            });
+
+        return [
+            'exam' => $exam,
+            'schoolName' => $printSetting?->school_name ?: 'SMK UJIAN TERUS',
+            'schoolAddress' => $printSetting?->school_address ?: 'Jl. Selalu Memikirkan Ujian',
+            'schoolDepartment' => $printSetting?->school_department ?: 'Multimedia dan TBSM',
+            'schoolLogoDataUri' => $this->buildPrintableStorageImageDataUri($printSetting?->logo_path)
+                ?: $this->buildPrintablePublicImageDataUri([
+                    'assets/school/logo-sekolah.png',
+                    'assets/school/logo_sekolah.png',
+                ]),
+            'printQuestions' => $questions,
+            'answerKey' => $questions->map(fn (array $question) => [
+                'number' => $question['number'],
+                'label' => $question['answer_key'],
+            ]),
+        ];
+    }
+
+    private function buildPrintableQuestionMediaDataUri(Question $question): ?string
+    {
+        if (! $question->hasMedia() || $question->media_type !== 'image' || ! Storage::exists($question->media_path)) {
+            return null;
+        }
+
+        $mimeType = Storage::mimeType($question->media_path) ?: 'image/png';
+        $contents = base64_encode(Storage::get($question->media_path));
+
+        return 'data:'.$mimeType.';base64,'.$contents;
+    }
+
+    private function buildPrintablePublicImageDataUri(string|array $relativePath): ?string
+    {
+        $candidatePaths = is_array($relativePath) ? $relativePath : [$relativePath];
+
+        foreach ($candidatePaths as $candidatePath) {
+            $absolutePath = public_path($candidatePath);
+
+            if (! is_file($absolutePath)) {
+                continue;
+            }
+
+            $mimeType = mime_content_type($absolutePath) ?: 'image/png';
+            $contents = base64_encode((string) file_get_contents($absolutePath));
+
+            return 'data:'.$mimeType.';base64,'.$contents;
+        }
+
+        return null;
+    }
+
+    private function buildPrintableStorageImageDataUri(?string $relativePath): ?string
+    {
+        if (! $relativePath || ! Storage::disk('public')->exists($relativePath)) {
+            return null;
+        }
+
+        $absolutePath = Storage::disk('public')->path($relativePath);
+
+        if (! is_file($absolutePath)) {
+            return null;
+        }
+
+        $mimeType = mime_content_type($absolutePath) ?: 'image/png';
+        $contents = base64_encode((string) file_get_contents($absolutePath));
+
+        return 'data:'.$mimeType.';base64,'.$contents;
     }
 }

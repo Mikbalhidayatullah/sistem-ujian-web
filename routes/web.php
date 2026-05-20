@@ -6,6 +6,7 @@ use App\Http\Controllers\QuestionMediaController;
 use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\ExamController as TeacherExamController;
+use App\Http\Controllers\Teacher\PrintSettingController;
 use App\Http\Controllers\Teacher\SubjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin')->middleware('role:admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('/accounts', [AdminDashboardController::class, 'accounts'])->name('accounts.index');
+        Route::get('/accounts/create', [AdminDashboardController::class, 'createAccount'])->name('accounts.create');
+        Route::post('/accounts', [AdminDashboardController::class, 'storeAccount'])->name('accounts.store');
         Route::post('/teachers', [AdminDashboardController::class, 'storeTeacher'])->name('teachers.store');
         Route::match(['put', 'patch'], '/teachers/{teacher}', [AdminDashboardController::class, 'updateTeacher'])->name('teachers.update');
     });
@@ -54,6 +57,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/subjects', [SubjectController::class, 'store'])->name('subjects.store');
         Route::match(['put', 'patch'], '/subjects/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
         Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');
+        Route::get('/settings/print', [PrintSettingController::class, 'edit'])->name('settings.print.edit');
+        Route::match(['put', 'patch'], '/settings/print', [PrintSettingController::class, 'update'])->name('settings.print.update');
+        Route::get('/exams', [TeacherExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/create', [TeacherExamController::class, 'create'])->name('exams.create');
         Route::post('/exams', [TeacherExamController::class, 'store'])->name('exams.store');
         Route::get('/exams/{exam}/edit', [TeacherExamController::class, 'edit'])->name('exams.edit');
@@ -63,6 +69,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/exams/{exam}/attempts/{attempt}', [TeacherExamController::class, 'destroyAttempt'])->name('exams.attempts.destroy');
         Route::delete('/exams/{exam}/violations', [TeacherExamController::class, 'destroyAllViolations'])->name('exams.violations.destroy-all');
         Route::delete('/exams/{exam}/violations/{violation}', [TeacherExamController::class, 'destroyViolation'])->name('exams.violations.destroy');
+        Route::get('/exams/{exam}/print', [TeacherExamController::class, 'printSheet'])->name('exams.print');
+        Route::get('/exams/{exam}/download-pdf', [TeacherExamController::class, 'downloadPdf'])->name('exams.download-pdf');
         Route::get('/exams/{exam}', [TeacherExamController::class, 'show'])->name('exams.show');
         Route::get('/exams/{exam}/export-scores', [TeacherExamController::class, 'exportScores'])->name('exams.export-scores');
         Route::post('/exams/{exam}/access', [TeacherExamController::class, 'toggleAccess'])->name('exams.access');
