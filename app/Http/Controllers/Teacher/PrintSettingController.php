@@ -21,7 +21,10 @@ class PrintSettingController extends Controller
 
         return view('teacher.settings.print', [
             'setting' => $setting,
-            'previewLogoUrl' => $this->resolvePreviewLogoUrl($setting->logo_path),
+            'previewLogoUrl' => $this->resolvePreviewLogoUrl(
+                $setting->logo_path,
+                $setting->updated_at?->timestamp
+            ),
         ]);
     }
 
@@ -84,15 +87,19 @@ class PrintSettingController extends Controller
         return response()->file(
             Storage::disk('public')->path($setting->logo_path),
             [
-                'Cache-Control' => 'private, max-age=300',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ]
         );
     }
 
-    private function resolvePreviewLogoUrl(?string $logoPath): ?string
+    private function resolvePreviewLogoUrl(?string $logoPath, ?int $version = null): ?string
     {
         if ($logoPath && Storage::disk('public')->exists($logoPath)) {
-            return route('teacher.settings.print.logo');
+            return route('teacher.settings.print.logo', [
+                'v' => $version ?? time(),
+            ]);
         }
 
         foreach (['assets/school/logo-sekolah.png', 'assets/school/logo_sekolah.png'] as $fallbackPath) {

@@ -1221,14 +1221,20 @@ const initPrintSettingsPreview = () => {
         const schoolNameTarget = document.querySelector('[data-print-preview-school-name-target]');
         const schoolDepartmentTarget = document.querySelector('[data-print-preview-school-department-target]');
         const schoolAddressTarget = document.querySelector('[data-print-preview-school-address-target]');
-        const logoImage = document.querySelector('[data-print-preview-logo-image]');
-        const logoPlaceholder = document.querySelector('[data-print-preview-logo-placeholder]');
+        const logoImages = Array.from(document.querySelectorAll('[data-print-preview-logo-image]'));
+        const logoPlaceholders = Array.from(document.querySelectorAll('[data-print-preview-logo-placeholder]'));
 
-        if (!schoolNameTarget || !schoolDepartmentTarget || !schoolAddressTarget || !logoImage || !logoPlaceholder) {
+        if (
+            !schoolNameTarget ||
+            !schoolDepartmentTarget ||
+            !schoolAddressTarget ||
+            logoImages.length === 0 ||
+            logoPlaceholders.length === 0
+        ) {
             return;
         }
 
-        const originalLogoSrc = logoImage.dataset.originalSrc || '';
+        const originalLogoSrc = logoImages[0].dataset.originalSrc || '';
 
         const syncText = () => {
             schoolNameTarget.textContent = schoolNameInput?.value.trim() || 'Nama sekolah';
@@ -1239,12 +1245,17 @@ const initPrintSettingsPreview = () => {
         const showLogoState = (src) => {
             const hasLogo = Boolean(src);
 
-            if (hasLogo) {
-                logoImage.src = src;
-            }
+            logoImages.forEach((logoImage) => {
+                if (hasLogo) {
+                    logoImage.src = src;
+                }
 
-            logoImage.classList.toggle('hidden', !hasLogo);
-            logoPlaceholder.classList.toggle('hidden', hasLogo);
+                logoImage.classList.toggle('hidden', !hasLogo);
+            });
+
+            logoPlaceholders.forEach((logoPlaceholder) => {
+                logoPlaceholder.classList.toggle('hidden', hasLogo);
+            });
         };
 
         const syncLogo = () => {

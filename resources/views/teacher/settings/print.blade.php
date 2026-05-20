@@ -30,11 +30,23 @@
                                         src="{{ $previewLogoUrl }}"
                                         alt="Logo print"
                                         class="h-32 w-auto object-contain"
+                                        data-print-preview-logo-image
+                                        data-original-src="{{ $previewLogoUrl }}"
                                     >
+                                    <div class="hidden" data-print-preview-logo-placeholder></div>
                                 </div>
                             @else
                                 <div class="mt-4 rounded-[1.5rem] border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                                    Belum ada logo khusus. Sistem akan memakai logo fallback jika tersedia.
+                                    <img
+                                        src=""
+                                        alt="Logo print"
+                                        class="hidden h-32 w-auto object-contain mx-auto"
+                                        data-print-preview-logo-image
+                                        data-original-src=""
+                                    >
+                                    <div data-print-preview-logo-placeholder>
+                                        Belum ada logo khusus. Sistem akan memakai logo fallback jika tersedia.
+                                    </div>
                                 </div>
                             @endif
 
