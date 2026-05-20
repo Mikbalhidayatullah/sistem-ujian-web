@@ -24,10 +24,10 @@
                         <div class="dashboard-muted-card p-5">
                             <p class="text-sm font-semibold text-slate-500">Logo header</p>
 
-                            @if ($setting->logo_path)
+                            @if ($previewLogoUrl)
                                 <div class="mt-4 rounded-[1.5rem] border border-slate-200 bg-white p-4">
                                     <img
-                                        src="{{ asset('storage/'.$setting->logo_path) }}"
+                                        src="{{ $previewLogoUrl }}"
                                         alt="Logo print"
                                         class="h-32 w-auto object-contain"
                                     >
