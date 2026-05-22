@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Models\ExamPrintLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -105,6 +106,19 @@ class PrintSettingController extends Controller
                 'Expires' => '0',
             ]
         );
+    }
+
+    public function history(Request $request): View
+    {
+        $logs = ExamPrintLog::query()
+            ->where('teacher_id', $request->user()->id)
+            ->with(['exam.subject'])
+            ->latest('printed_at')
+            ->paginate(15);
+
+        return view('teacher.settings.print-history', [
+            'logs' => $logs,
+        ]);
     }
 
     private function resolvePreviewLogoUrl(?string $logoPath, ?int $version = null): ?string

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
-use App\Support\SimpleXlsxBuilder;
+use App\Models\Exam;
 use App\Models\ExamAnswer;
 use App\Models\ExamAttempt;
-use App\Models\Exam;
-use App\Models\Question;
+use App\Models\ExamPrintLog;
 use App\Models\ExamViolation;
+use App\Models\Question;
+use App\Models\QuestionBank;
+use App\Support\SimpleXlsxBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,9 +30,16 @@ class ExamController extends Controller
 
         return view('teacher.exams.index', [
             'exams' => $teacher->exams()
+                ->whereNull('archived_at')
                 ->with('subject')
                 ->withCount(['questions', 'attempts'])
                 ->latest()
+                ->get(),
+            'archivedExams' => $teacher->exams()
+                ->whereNotNull('archived_at')
+                ->with('subject')
+                ->withCount(['questions', 'attempts'])
+                ->latest('archived_at')
                 ->get(),
         ]);
     }
@@ -76,6 +85,7 @@ class ExamController extends Controller
             'max_violations' => $data['max_violations'],
             'is_active' => $request->boolean('is_active'),
             'violations_enabled' => $request->boolean('violations_enabled', true),
+            'shuffle_questions_per_student' => $request->boolean('shuffle_questions_per_student'),
         ]);
 
         return redirect()
@@ -103,6 +113,7 @@ class ExamController extends Controller
             'max_violations' => $data['max_violations'],
             'is_active' => $request->boolean('is_active'),
             'violations_enabled' => $request->boolean('violations_enabled', true),
+            'shuffle_questions_per_student' => $request->boolean('shuffle_questions_per_student'),
         ]);
 
         return redirect()
@@ -141,6 +152,12 @@ class ExamController extends Controller
             'exam' => $exam,
             'violations' => $violations,
             'questionInsights' => $questionInsights,
+            'questionBankQuestions' => QuestionBank::query()
+                ->where('teacher_id', auth()->id())
+                ->where('subject_id', $exam->subject_id)
+                ->with('options')
+                ->latest()
+                ->get(),
             'questionInsightSummary' => [
                 'participants' => $insightParticipants,
                 'most_correct' => $insightParticipants > 0 ? $questionInsights->sortByDesc('correct_percentage')->first() : null,
@@ -221,6 +238,7 @@ class ExamController extends Controller
     public function printSheet(Exam $exam): View
     {
         abort_unless($exam->teacher_id === auth()->id(), 403);
+        $this->logPrintAction($exam, 'print');
 
         return view('teacher.exams.printable', [
             ...$this->buildPrintableExamViewData($exam),
@@ -231,6 +249,7 @@ class ExamController extends Controller
     public function downloadPdf(Exam $exam): Response
     {
         abort_unless($exam->teacher_id === auth()->id(), 403);
+        $this->logPrintAction($exam, 'pdf');
 
         $viewData = [
             ...$this->buildPrintableExamViewData($exam),
@@ -464,6 +483,96 @@ class ExamController extends Controller
         });
 
         return back()->with('status', 'Semua soal pada bank soal berhasil dihapus.');
+    }
+
+    public function saveQuestionToBank(Request $request, Exam $exam, Question $question): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+        abort_unless($question->exam_id === $exam->id, 404);
+
+        $question->loadMissing('options');
+
+        DB::transaction(function () use ($exam, $question): void {
+            $questionBank = QuestionBank::create([
+                'teacher_id' => $exam->teacher_id,
+                'subject_id' => $exam->subject_id,
+                'prompt' => $question->prompt,
+                'media_type' => $question->media_type,
+                'media_path' => $this->duplicateQuestionMediaToBank($question->media_path),
+                'points' => $question->points,
+                'source_exam_title' => $exam->title,
+                'source_question_position' => $question->position,
+            ]);
+
+            foreach ($question->options as $option) {
+                $questionBank->options()->create([
+                    'option_text' => $option->option_text,
+                    'is_correct' => $option->is_correct,
+                    'position' => $option->position,
+                ]);
+            }
+        });
+
+        return back()->with('status', 'Soal berhasil disimpan ke bank soal mapel.');
+    }
+
+    public function importQuestionBank(Request $request, Exam $exam, QuestionBank $questionBank): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+        abort_unless($questionBank->teacher_id === $request->user()->id, 403);
+        abort_unless($questionBank->subject_id === $exam->subject_id, 422, 'Soal hanya bisa diambil dari bank soal mapel yang sama.');
+
+        $questionBank->loadMissing('options');
+
+        DB::transaction(function () use ($exam, $questionBank): void {
+            $copiedMedia = $this->duplicateBankMediaToQuestion($questionBank->media_path, $questionBank->media_type);
+
+            $question = $exam->questions()->create([
+                'prompt' => $questionBank->prompt,
+                'points' => $questionBank->points,
+                'position' => ((int) $exam->questions()->max('position')) + 1,
+                'media_path' => $copiedMedia['path'],
+                'media_type' => $copiedMedia['type'],
+            ]);
+
+            foreach ($questionBank->options as $option) {
+                $question->options()->create([
+                    'option_text' => $option->option_text,
+                    'is_correct' => $option->is_correct,
+                    'position' => $option->position,
+                ]);
+            }
+        });
+
+        return back()->with('status', 'Soal dari bank soal berhasil dimasukkan ke ujian.');
+    }
+
+    public function archive(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $exam->update([
+            'archived_at' => now(),
+            'is_active' => false,
+        ]);
+
+        return redirect()
+            ->route('teacher.exams.index')
+            ->with('status', 'Ujian berhasil diarsipkan dan dipindahkan dari daftar aktif.');
+    }
+
+    public function restore(Request $request, Exam $exam): RedirectResponse
+    {
+        abort_unless($exam->teacher_id === $request->user()->id, 403);
+
+        $exam->update([
+            'archived_at' => null,
+            'is_active' => false,
+        ]);
+
+        return redirect()
+            ->route('teacher.exams.show', $exam)
+            ->with('status', 'Ujian berhasil dipulihkan. Akses manual tetap ditutup sampai Anda membukanya lagi.');
     }
 
     public function updateQuestion(Request $request, Exam $exam, Question $question): RedirectResponse
@@ -809,6 +918,48 @@ class ExamController extends Controller
                     ]);
                 }
             });
+    }
+
+    private function duplicateQuestionMediaToBank(?string $mediaPath): ?string
+    {
+        if (! $mediaPath || ! Storage::exists($mediaPath)) {
+            return null;
+        }
+
+        $extension = pathinfo($mediaPath, PATHINFO_EXTENSION) ?: 'bin';
+        $newPath = 'question-bank-media/'.uniqid('bank_', true).'.'.$extension;
+        Storage::copy($mediaPath, $newPath);
+
+        return $newPath;
+    }
+
+    private function duplicateBankMediaToQuestion(?string $mediaPath, ?string $mediaType): array
+    {
+        if (! $mediaPath || ! Storage::exists($mediaPath)) {
+            return [
+                'path' => null,
+                'type' => null,
+            ];
+        }
+
+        $extension = pathinfo($mediaPath, PATHINFO_EXTENSION) ?: 'bin';
+        $newPath = 'question-media/'.uniqid('question_', true).'.'.$extension;
+        Storage::copy($mediaPath, $newPath);
+
+        return [
+            'path' => $newPath,
+            'type' => $mediaType,
+        ];
+    }
+
+    private function logPrintAction(Exam $exam, string $channel): void
+    {
+        ExamPrintLog::create([
+            'teacher_id' => $exam->teacher_id,
+            'exam_id' => $exam->id,
+            'printed_at' => now(),
+            'channel' => $channel,
+        ]);
     }
 
     private function validateExamData(Request $request, int $teacherId, ?Exam $exam = null): array

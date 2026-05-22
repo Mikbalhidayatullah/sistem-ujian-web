@@ -9,6 +9,7 @@
                 @include('teacher.exams.partials.question-list')
 
                 <aside class="space-y-6">
+                    @include('teacher.exams.partials.question-bank-library')
                     @include('teacher.exams.partials.violations-log')
                 </aside>
             </div>

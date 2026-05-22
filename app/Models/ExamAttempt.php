@@ -21,6 +21,7 @@ class ExamAttempt extends Model
         'student_id',
         'student_name',
         'student_identifier',
+        'question_order',
         'started_at',
         'submitted_at',
         'status',
@@ -37,6 +38,7 @@ class ExamAttempt extends Model
             'submitted_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'score' => 'decimal:2',
+            'question_order' => 'array',
         ];
     }
 

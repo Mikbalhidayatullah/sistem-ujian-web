@@ -24,6 +24,8 @@ class Exam extends Model
         'max_violations',
         'is_active',
         'violations_enabled',
+        'shuffle_questions_per_student',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -33,6 +35,8 @@ class Exam extends Model
             'end_at' => 'datetime',
             'is_active' => 'boolean',
             'violations_enabled' => 'boolean',
+            'shuffle_questions_per_student' => 'boolean',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -54,6 +58,11 @@ class Exam extends Model
     public function attempts()
     {
         return $this->hasMany(ExamAttempt::class);
+    }
+
+    public function printLogs()
+    {
+        return $this->hasMany(ExamPrintLog::class);
     }
 
     public function isOpenNow(): bool
@@ -87,6 +96,10 @@ class Exam extends Model
 
     public function isWithinSchedule(): bool
     {
+        if ($this->isArchived()) {
+            return false;
+        }
+
         $now = now();
 
         if ($this->start_at instanceof Carbon && $now->lt($this->start_at)) {
@@ -98,5 +111,10 @@ class Exam extends Model
         }
 
         return true;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 }

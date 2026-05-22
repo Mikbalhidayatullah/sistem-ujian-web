@@ -54,6 +54,16 @@ class AttemptController extends Controller
             ]);
         }
 
+        if ($exam->isArchived()) {
+            return response()->json([
+                'found' => true,
+                'can_start' => false,
+                'state' => 'archived',
+                'message' => 'Ujian ini sudah diarsipkan dan tidak menerima peserta baru.',
+                'meta' => $exam->title.' | '.$exam->subject->display_name,
+            ]);
+        }
+
         if (! $exam->questions()->exists()) {
             return response()->json([
                 'found' => true,
@@ -118,6 +128,12 @@ class AttemptController extends Controller
             ]);
         }
 
+        if ($exam->isArchived()) {
+            throw ValidationException::withMessages([
+                'access_token' => 'Ujian ini sudah diarsipkan dan tidak menerima peserta baru.',
+            ]);
+        }
+
         abort_unless($exam->questions()->exists(), 422, 'Ujian belum memiliki soal.');
         abort_unless($exam->isOpenNow(), 422, 'Ujian belum dibuka atau sudah berakhir.');
 
@@ -153,9 +169,12 @@ class AttemptController extends Controller
             return redirect()->route('exam.attempts.result', $attempt)->with('status', 'Waktu ujian habis. Jawaban tersimpan otomatis.');
         }
 
+        $orderedQuestions = $this->orderedQuestionsForAttempt($attempt);
+
         return view('student.exams.take', [
             'attempt' => $attempt,
             'savedAnswers' => $attempt->answers->pluck('question_option_id', 'question_id'),
+            'orderedQuestions' => $orderedQuestions,
         ]);
     }
 
@@ -303,7 +322,7 @@ class AttemptController extends Controller
                     ]);
                 }
 
-                return $attemptByIdentifier->fresh();
+                return $this->ensureQuestionOrder($attemptByIdentifier->fresh());
             }
 
             throw ValidationException::withMessages([
@@ -315,6 +334,7 @@ class AttemptController extends Controller
             'exam_id' => $exam->id,
             'student_name' => $fullName,
             'student_identifier' => $studentIdentifier,
+            'question_order' => $this->generateQuestionOrder($exam),
             'started_at' => now(),
             'last_activity_at' => now(),
             'status' => ExamAttempt::STATUS_IN_PROGRESS,
@@ -436,5 +456,81 @@ class AttemptController extends Controller
         abort_unless(isset($allowed[$attempt->id]), 403);
 
         $attempt->loadMissing('exam');
+    }
+
+    protected function generateQuestionOrder(Exam $exam): ?array
+    {
+        if (! $exam->shuffle_questions_per_student) {
+            return null;
+        }
+
+        return $exam->questions()
+            ->pluck('questions.id')
+            ->shuffle()
+            ->values()
+            ->all();
+    }
+
+    protected function ensureQuestionOrder(ExamAttempt $attempt): ExamAttempt
+    {
+        $attempt->loadMissing('exam');
+
+        if (! $attempt->exam->shuffle_questions_per_student) {
+            if (! empty($attempt->question_order)) {
+                $attempt->update(['question_order' => null]);
+            }
+
+            return $attempt->fresh(['exam']);
+        }
+
+        $currentOrder = collect($attempt->question_order ?? []);
+        $questionIds = $attempt->exam->questions()->pluck('questions.id');
+
+        if ($currentOrder->isEmpty()) {
+            $attempt->update([
+                'question_order' => $questionIds->shuffle()->values()->all(),
+            ]);
+
+            return $attempt->fresh(['exam']);
+        }
+
+        $validQuestionIds = $questionIds->map(fn ($id) => (int) $id)->all();
+        $normalizedOrder = $currentOrder
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => in_array($id, $validQuestionIds, true))
+            ->values();
+
+        $missingIds = collect($validQuestionIds)
+            ->reject(fn ($id) => $normalizedOrder->contains($id))
+            ->values();
+
+        $finalOrder = $normalizedOrder->concat($missingIds)->values()->all();
+
+        if ($finalOrder !== ($attempt->question_order ?? [])) {
+            $attempt->update(['question_order' => $finalOrder]);
+
+            return $attempt->fresh(['exam']);
+        }
+
+        return $attempt;
+    }
+
+    protected function orderedQuestionsForAttempt(ExamAttempt $attempt)
+    {
+        $attempt = $this->ensureQuestionOrder($attempt);
+
+        $questions = $attempt->exam->questions;
+
+        if (! $attempt->exam->shuffle_questions_per_student || empty($attempt->question_order)) {
+            return $questions->sortBy('position')->values();
+        }
+
+        $orderMap = collect($attempt->question_order)
+            ->values()
+            ->flip();
+
+        return $questions
+            ->sortBy(fn ($question) => $orderMap->get($question->id, PHP_INT_MAX))
+            ->values();
     }
 }

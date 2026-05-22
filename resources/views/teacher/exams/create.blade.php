@@ -104,6 +104,17 @@
                             {{ $isEditingExam ? 'Biarkan akses manual tetap aktif' : 'Aktifkan ujian setelah dibuat' }}
                         </label>
 
+                        <label class="dashboard-muted-card flex items-center gap-3 px-4 py-4 text-sm text-slate-700 md:col-span-2">
+                            <input
+                                type="checkbox"
+                                name="shuffle_questions_per_student"
+                                value="1"
+                                class="rounded border-slate-300 bg-white text-sky-500"
+                                @checked(old('shuffle_questions_per_student', $editingExam?->shuffle_questions_per_student))
+                            >
+                            Acak urutan soal per siswa
+                        </label>
+
                         <div class="md:col-span-2 action-row">
                             <button type="submit" class="dashboard-button-primary gap-2">
                                 <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">

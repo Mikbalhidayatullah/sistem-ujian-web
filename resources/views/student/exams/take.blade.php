@@ -27,7 +27,7 @@
         data-max-violations="{{ $attempt->exam->max_violations }}"
         data-violations-enabled="{{ $attempt->exam->violations_enabled ? '1' : '0' }}"
         data-expires-at="{{ optional($attempt->expiresAt())->toIso8601String() }}"
-        data-total-questions="{{ $attempt->exam->questions->count() }}"
+        data-total-questions="{{ $orderedQuestions->count() }}"
     >
         <div class="exam-hero exam-hero-danger" data-exam-hero>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -54,6 +54,9 @@
                     <span class="exam-chip exam-chip-warning">Batas pelanggaran {{ $attempt->exam->max_violations }}</span>
                 @else
                     <span class="exam-chip exam-chip-info">Pelanggaran dinonaktifkan</span>
+                @endif
+                @if ($attempt->exam->shuffle_questions_per_student)
+                    <span class="exam-chip exam-chip-info">Urutan soal diacak per siswa</span>
                 @endif
             </div>
         </div>
@@ -93,7 +96,7 @@
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-xs">
                             <span class="exam-chip exam-chip-neutral">
-                                {{ $attempt->exam->questions->count() }} soal
+                                {{ $orderedQuestions->count() }} soal
                             </span>
                             <span class="exam-chip exam-chip-info exam-dock-hint">
                                 Nomor terjawab akan ikut ditandai
@@ -126,7 +129,7 @@
                     </div>
 
                     <div class="exam-question-nav-track" data-question-nav-track>
-                        @foreach ($attempt->exam->questions as $question)
+                        @foreach ($orderedQuestions as $question)
                             <a
                                 href="#question-{{ $question->id }}"
                                 class="exam-question-nav-button {{ isset($savedAnswers[$question->id]) ? 'is-answered' : '' }}"
@@ -143,7 +146,7 @@
 
         <form method="POST" action="{{ route('exam.attempts.submit', $attempt) }}" id="exam-form" class="space-y-5">
             @csrf
-            @foreach ($attempt->exam->questions as $question)
+            @foreach ($orderedQuestions as $question)
                 <article class="exam-card scroll-mt-80" id="question-{{ $question->id }}" data-question-card data-question-id="{{ $question->id }}">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>

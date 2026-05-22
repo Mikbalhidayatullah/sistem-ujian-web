@@ -48,6 +48,16 @@ class User extends Authenticatable
         return $this->hasMany(Exam::class, 'teacher_id');
     }
 
+    public function questionBanks()
+    {
+        return $this->hasMany(QuestionBank::class, 'teacher_id');
+    }
+
+    public function printLogs()
+    {
+        return $this->hasMany(ExamPrintLog::class, 'teacher_id');
+    }
+
     public function printSetting()
     {
         return $this->hasOne(TeacherPrintSetting::class, 'teacher_id');

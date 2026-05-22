@@ -15,10 +15,13 @@ class DashboardController extends Controller
         $teacher = auth()->user();
 
         $subjects = $teacher->subjects()
-            ->withCount('exams')
+            ->withCount([
+                'exams' => fn ($query) => $query->whereNull('archived_at'),
+            ])
             ->latest()
             ->get();
         $exams = $teacher->exams()
+            ->whereNull('archived_at')
             ->with(['subject'])
             ->withCount(['questions', 'attempts'])
             ->latest()

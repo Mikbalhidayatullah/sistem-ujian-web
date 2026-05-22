@@ -186,4 +186,21 @@ class DashboardController extends Controller
             ->route('admin.accounts.index')
             ->with('status', 'Akun guru berhasil diperbarui.');
     }
+
+    public function resetTeacherPassword(Request $request, User $teacher): RedirectResponse
+    {
+        abort_unless($teacher->isTeacher(), 404);
+
+        $data = $request->validate([
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
+        ]);
+
+        $teacher->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect()
+            ->route('admin.accounts.index', ['edit' => $teacher->id])
+            ->with('status', 'Password guru berhasil direset.');
+    }
 }

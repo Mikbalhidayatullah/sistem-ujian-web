@@ -49,6 +49,12 @@
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <x-ui.dashboard-pill>{{ $question->points }} poin</x-ui.dashboard-pill>
+                            <form method="POST" action="{{ route('teacher.exams.questions.save-to-bank', [$exam, $question]) }}">
+                                @csrf
+                                <button type="submit" class="dashboard-button-soft px-4 py-2 text-xs">
+                                    Simpan ke bank soal
+                                </button>
+                            </form>
                             <button
                                 type="button"
                                 class="{{ $isEditing ? 'dashboard-button-return' : 'dashboard-button-soft' }} px-4 py-2 text-xs"

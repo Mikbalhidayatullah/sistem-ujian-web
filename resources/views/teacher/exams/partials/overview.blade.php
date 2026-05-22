@@ -22,26 +22,43 @@
                 <a href="{{ route('teacher.exams.edit', $exam) }}" class="dashboard-button-return">
                     Edit ujian
                 </a>
+                @if ($exam->isArchived())
+                    <form method="POST" action="{{ route('teacher.exams.restore', $exam) }}">
+                        @csrf
+                        <button type="submit" class="dashboard-button-success">
+                            Pulihkan ujian
+                        </button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('teacher.exams.archive', $exam) }}" onsubmit="return confirm('Arsipkan ujian ini? Ujian akan dipindahkan dari daftar aktif dan akses siswa ditutup.');">
+                        @csrf
+                        <button type="submit" class="dashboard-button-return">
+                            Arsipkan ujian
+                        </button>
+                    </form>
+                @endif
                 <a href="{{ route('teacher.exams.print', $exam) }}" target="_blank" rel="noopener" class="dashboard-button-soft">
                     Print
                 </a>
-                <form method="POST" action="{{ route('teacher.exams.access', $exam) }}">
-                    @csrf
-                    <input type="hidden" name="action" value="{{ $exam->isManuallyOpen() ? 'close' : 'open' }}">
-                    <button type="submit" class="{{ $exam->isManuallyOpen() ? 'dashboard-button-danger' : 'dashboard-button-success' }}">
-                        {{ $exam->isManuallyOpen() ? 'Tutup akses sekarang' : 'Buka akses sekarang' }}
-                    </button>
-                </form>
-                <form method="POST" action="{{ route('teacher.exams.violations.toggle', $exam) }}">
-                    @csrf
-                    <input type="hidden" name="action" value="{{ $exam->violations_enabled ? 'disable' : 'enable' }}">
-                    <button
-                        type="submit"
-                        class="{{ $exam->violations_enabled ? 'dashboard-button-return' : 'dashboard-button-success' }}"
-                    >
-                        {{ $exam->violations_enabled ? 'Matikan fitur pelanggaran' : 'Aktifkan fitur pelanggaran' }}
-                    </button>
-                </form>
+                @unless ($exam->isArchived())
+                    <form method="POST" action="{{ route('teacher.exams.access', $exam) }}">
+                        @csrf
+                        <input type="hidden" name="action" value="{{ $exam->isManuallyOpen() ? 'close' : 'open' }}">
+                        <button type="submit" class="{{ $exam->isManuallyOpen() ? 'dashboard-button-danger' : 'dashboard-button-success' }}">
+                            {{ $exam->isManuallyOpen() ? 'Tutup akses sekarang' : 'Buka akses sekarang' }}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('teacher.exams.violations.toggle', $exam) }}">
+                        @csrf
+                        <input type="hidden" name="action" value="{{ $exam->violations_enabled ? 'disable' : 'enable' }}">
+                        <button
+                            type="submit"
+                            class="{{ $exam->violations_enabled ? 'dashboard-button-return' : 'dashboard-button-success' }}"
+                        >
+                            {{ $exam->violations_enabled ? 'Matikan fitur pelanggaran' : 'Aktifkan fitur pelanggaran' }}
+                        </button>
+                    </form>
+                @endunless
                 <a href="{{ route('teacher.exams.export-scores', $exam) }}" class="dashboard-button-soft">
                     Download Excel
                 </a>
@@ -55,11 +72,19 @@
             <x-ui.dashboard-pill :tone="$exam->isWithinSchedule() ? 'default' : 'slate'">
                 {{ $exam->isWithinSchedule() ? 'Dalam jadwal ujian' : 'Di luar jadwal ujian' }}
             </x-ui.dashboard-pill>
+            @if ($exam->isArchived())
+                <x-ui.dashboard-pill tone="warning">
+                    Ujian ini sedang diarsipkan
+                </x-ui.dashboard-pill>
+            @endif
             <x-ui.dashboard-pill :tone="$exam->isOpenNow() ? 'success' : 'warning'">
                 {{ $exam->isOpenNow() ? 'Siswa bisa masuk sekarang' : 'Siswa belum bisa masuk' }}
             </x-ui.dashboard-pill>
             <x-ui.dashboard-pill :tone="$exam->violations_enabled ? 'warning' : 'info'">
                 {{ $exam->violations_enabled ? 'Fitur pelanggaran aktif' : 'Fitur pelanggaran nonaktif' }}
+            </x-ui.dashboard-pill>
+            <x-ui.dashboard-pill :tone="$exam->shuffle_questions_per_student ? 'info' : 'slate'">
+                {{ $exam->shuffle_questions_per_student ? 'Urutan soal diacak per siswa' : 'Urutan soal tetap sama' }}
             </x-ui.dashboard-pill>
         </div>
 

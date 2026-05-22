@@ -61,6 +61,11 @@
                     'route' => route('teacher.exams.create'),
                     'active' => request()->routeIs('teacher.exams.create') || request()->routeIs('teacher.exams.edit'),
                 ],
+                [
+                    'label' => 'Bank soal',
+                    'route' => route('teacher.question-bank.index'),
+                    'active' => request()->routeIs('teacher.question-bank.*'),
+                ],
             ],
         ],
         [
@@ -78,7 +83,12 @@
                 [
                     'label' => 'Print',
                     'route' => route('teacher.settings.print.edit'),
-                    'active' => request()->routeIs('teacher.settings.print.*'),
+                    'active' => request()->routeIs('teacher.settings.print.edit') || request()->routeIs('teacher.settings.print.update') || request()->routeIs('teacher.settings.print.reset') || request()->routeIs('teacher.settings.print.logo'),
+                ],
+                [
+                    'label' => 'Riwayat cetak',
+                    'route' => route('teacher.settings.print.history'),
+                    'active' => request()->routeIs('teacher.settings.print.history'),
                 ],
             ],
         ],

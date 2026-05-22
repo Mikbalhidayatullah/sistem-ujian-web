@@ -7,6 +7,7 @@ use App\Http\Controllers\Student\AttemptController;
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\ExamController as TeacherExamController;
 use App\Http\Controllers\Teacher\PrintSettingController;
+use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\SubjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/accounts', [AdminDashboardController::class, 'storeAccount'])->name('accounts.store');
         Route::post('/teachers', [AdminDashboardController::class, 'storeTeacher'])->name('teachers.store');
         Route::match(['put', 'patch'], '/teachers/{teacher}', [AdminDashboardController::class, 'updateTeacher'])->name('teachers.update');
+        Route::post('/teachers/{teacher}/reset-password', [AdminDashboardController::class, 'resetTeacherPassword'])->name('teachers.reset-password');
     });
 
     Route::prefix('teacher')->middleware('role:teacher')->name('teacher.')->group(function () {
@@ -58,9 +60,12 @@ Route::middleware('auth')->group(function () {
         Route::match(['put', 'patch'], '/subjects/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
         Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');
         Route::get('/settings/print', [PrintSettingController::class, 'edit'])->name('settings.print.edit');
+        Route::get('/settings/print/history', [PrintSettingController::class, 'history'])->name('settings.print.history');
         Route::get('/settings/print/logo', [PrintSettingController::class, 'showLogo'])->name('settings.print.logo');
         Route::match(['put', 'patch'], '/settings/print', [PrintSettingController::class, 'update'])->name('settings.print.update');
         Route::post('/settings/print/reset', [PrintSettingController::class, 'reset'])->name('settings.print.reset');
+        Route::get('/question-bank', [QuestionBankController::class, 'index'])->name('question-bank.index');
+        Route::delete('/question-bank/{questionBank}', [QuestionBankController::class, 'destroy'])->name('question-bank.destroy');
         Route::get('/exams', [TeacherExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/create', [TeacherExamController::class, 'create'])->name('exams.create');
         Route::post('/exams', [TeacherExamController::class, 'store'])->name('exams.store');
@@ -83,6 +88,13 @@ Route::middleware('auth')->group(function () {
             ->name('exams.questions.default-points.update');
         Route::delete('/exams/{exam}/questions', [TeacherExamController::class, 'destroyAllQuestions'])
             ->name('exams.questions.destroy-all');
+        Route::post('/exams/{exam}/questions/{question}/save-to-bank', [TeacherExamController::class, 'saveQuestionToBank'])
+            ->whereNumber('question')
+            ->name('exams.questions.save-to-bank');
+        Route::post('/exams/{exam}/question-bank/{questionBank}/import', [TeacherExamController::class, 'importQuestionBank'])
+            ->name('exams.question-bank.import');
+        Route::post('/exams/{exam}/archive', [TeacherExamController::class, 'archive'])->name('exams.archive');
+        Route::post('/exams/{exam}/restore', [TeacherExamController::class, 'restore'])->name('exams.restore');
         Route::match(['put', 'patch'], '/exams/{exam}/questions/{question}', [TeacherExamController::class, 'updateQuestion'])
             ->whereNumber('question')
             ->name('exams.questions.update');

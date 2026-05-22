@@ -97,6 +97,60 @@
                         </button>
                     </div>
                 </form>
+
+                <div class="mt-8 border-t border-slate-200 pt-6">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="dashboard-kicker">Reset Password</p>
+                            <h3 class="mt-2 text-xl font-bold text-slate-900">Reset password akun guru</h3>
+                            <p class="mt-3 text-sm leading-6 text-slate-500">
+                                Gunakan bagian ini jika guru lupa password. Password baru akan langsung menggantikan password lama tanpa mengubah data akun lain.
+                            </p>
+                        </div>
+                        <span class="dashboard-pill">Admin only</span>
+                    </div>
+
+                    <form method="POST" action="{{ route('admin.teachers.reset-password', $editingTeacher) }}" class="mt-6 space-y-4">
+                        @csrf
+
+                        <div class="grid gap-4 lg:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-600">Password reset baru</label>
+                                <div class="password-field" data-password-field>
+                                    <input type="password" name="password" class="dashboard-input password-input" placeholder="Masukkan password baru" required>
+                                    <button type="button" class="password-toggle text-slate-500 hover:text-slate-700 hover:bg-slate-100" data-password-toggle aria-label="Lihat password">
+                                        <span class="sr-only">Lihat password</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-600">Konfirmasi password reset</label>
+                                <div class="password-field" data-password-field>
+                                    <input type="password" name="password_confirmation" class="dashboard-input password-input" placeholder="Ulangi password baru" required>
+                                    <button type="button" class="password-toggle text-slate-500 hover:text-slate-700 hover:bg-slate-100" data-password-toggle aria-label="Lihat password">
+                                        <span class="sr-only">Lihat password</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="text-xs leading-6 text-slate-500">
+                                Password baru wajib memiliki huruf besar, huruf kecil, dan angka agar akun guru tetap aman.
+                            </p>
+
+                            <button type="submit" class="dashboard-button-primary w-full gap-2 sm:w-auto">
+                                <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M8 11V8.8a4 4 0 1 1 8 0V11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <rect x="5.5" y="11" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                                    <circle cx="12" cy="15.5" r="1.2" fill="currentColor"/>
+                                </svg>
+                                Reset password guru
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         @endif
 
