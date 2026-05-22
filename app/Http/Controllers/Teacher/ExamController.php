@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Support\SimpleXlsxBuilder;
 use App\Models\ExamAnswer;
 use App\Models\ExamAttempt;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Models\ExamViolation;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ExamController extends Controller
@@ -194,7 +195,7 @@ class ExamController extends Controller
         return back()->with('status', $deletedCount.' data peserta berhasil dihapus dari ujian ini.');
     }
 
-    public function exportScores(Exam $exam): StreamedResponse
+    public function exportScores(Exam $exam): BinaryFileResponse
     {
         abort_unless($exam->teacher_id === auth()->id(), 403);
 
@@ -205,17 +206,16 @@ class ExamController extends Controller
             'attempts.student',
         ]);
 
-        $filename = 'rekap-nilai-'.str($exam->title)->slug('-').'.xls';
+        $filename = 'rekap-nilai-'.str($exam->title)->slug('-').'.xlsx';
+        $tempDirectory = storage_path('app/temp');
+        $tempFile = $tempDirectory.DIRECTORY_SEPARATOR.'rekap-nilai-'.str()->uuid().'.xlsx';
 
-        return response()->streamDownload(function () use ($exam): void {
-            echo "\xEF\xBB\xBF";
-            echo view('teacher.exams.export', [
-                'exam' => $exam,
-            ])->render();
-        }, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        $builder = new SimpleXlsxBuilder();
+        $builder->build($tempFile, 'Rekap Nilai', $this->buildExportScoreRows($exam));
+
+        return response()->download($tempFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function printSheet(Exam $exam): View
@@ -913,11 +913,7 @@ class ExamController extends Controller
             'schoolName' => $printSetting?->school_name ?: 'SMK UJIAN TERUS',
             'schoolAddress' => $printSetting?->school_address ?: 'Jl. Selalu Memikirkan Ujian',
             'schoolDepartment' => $printSetting?->school_department ?: 'Multimedia dan TBSM',
-            'schoolLogoDataUri' => $this->buildPrintableStorageImageDataUri($printSetting?->logo_path)
-                ?: $this->buildPrintablePublicImageDataUri([
-                    'assets/school/logo-sekolah.png',
-                    'assets/school/logo_sekolah.png',
-                ]),
+            'schoolLogoDataUri' => $this->buildPrintableStorageImageDataUri($printSetting?->logo_path),
             'printQuestions' => $questions,
             'answerKey' => $questions->map(fn (array $question) => [
                 'number' => $question['number'],
@@ -938,26 +934,6 @@ class ExamController extends Controller
         return 'data:'.$mimeType.';base64,'.$contents;
     }
 
-    private function buildPrintablePublicImageDataUri(string|array $relativePath): ?string
-    {
-        $candidatePaths = is_array($relativePath) ? $relativePath : [$relativePath];
-
-        foreach ($candidatePaths as $candidatePath) {
-            $absolutePath = public_path($candidatePath);
-
-            if (! is_file($absolutePath)) {
-                continue;
-            }
-
-            $mimeType = mime_content_type($absolutePath) ?: 'image/png';
-            $contents = base64_encode((string) file_get_contents($absolutePath));
-
-            return 'data:'.$mimeType.';base64,'.$contents;
-        }
-
-        return null;
-    }
-
     private function buildPrintableStorageImageDataUri(?string $relativePath): ?string
     {
         if (! $relativePath || ! Storage::disk('public')->exists($relativePath)) {
@@ -974,5 +950,68 @@ class ExamController extends Controller
         $contents = base64_encode((string) file_get_contents($absolutePath));
 
         return 'data:'.$mimeType.';base64,'.$contents;
+    }
+
+    private function buildExportScoreRows(Exam $exam): array
+    {
+        $rows = [
+            [
+                ['value' => 'Rekap Nilai Ujian', 'style' => 1],
+            ],
+            [
+                ['value' => 'Judul Ujian', 'style' => 1],
+                ['value' => $exam->title, 'style' => 2],
+            ],
+            [
+                ['value' => 'Mata Pelajaran', 'style' => 1],
+                ['value' => $exam->subject->display_name, 'style' => 2],
+            ],
+            [
+                ['value' => 'Token', 'style' => 1],
+                ['value' => $exam->access_token, 'style' => 2],
+                ['value' => 'PIN', 'style' => 1],
+                ['value' => $exam->access_pin, 'style' => 2],
+                ['value' => 'Durasi', 'style' => 1],
+                ['value' => $exam->duration_minutes, 'type' => 'number', 'style' => 2],
+                ['value' => 'Jumlah Soal', 'style' => 1],
+                ['value' => $exam->questions->count(), 'type' => 'number', 'style' => 2],
+            ],
+            [],
+            [
+                ['value' => 'No', 'style' => 1],
+                ['value' => 'Nama Siswa', 'style' => 1],
+                ['value' => 'Status', 'style' => 1],
+                ['value' => 'Nilai', 'style' => 1],
+                ['value' => 'Jawaban Benar', 'style' => 1],
+                ['value' => 'Jawaban Salah', 'style' => 1],
+                ['value' => 'Soal Dijawab', 'style' => 1],
+                ['value' => 'Waktu Dipakai', 'style' => 1],
+                ['value' => 'Pelanggaran', 'style' => 1],
+                ['value' => 'Waktu Submit', 'style' => 1],
+            ],
+        ];
+
+        foreach ($exam->attempts as $index => $attempt) {
+            $rows[] = [
+                ['value' => $index + 1, 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->participantName(), 'style' => 2],
+                ['value' => $attempt->status, 'style' => 2],
+                ['value' => number_format((float) $attempt->score, 2, '.', ''), 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->correctCount(), 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->wrongCount(), 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->answeredCount(), 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->timeSpentForHumans(), 'style' => 2],
+                ['value' => $attempt->violation_count, 'type' => 'number', 'style' => 2],
+                ['value' => $attempt->submitted_at?->format('d-m-Y H:i:s') ?? '-', 'style' => 2],
+            ];
+        }
+
+        if ($exam->attempts->isEmpty()) {
+            $rows[] = [
+                ['value' => 'Belum ada siswa yang mengerjakan ujian ini.', 'style' => 2],
+            ];
+        }
+
+        return $rows;
     }
 }

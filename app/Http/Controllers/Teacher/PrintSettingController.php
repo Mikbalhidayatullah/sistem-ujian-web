@@ -11,13 +11,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PrintSettingController extends Controller
 {
+    private const DEFAULT_SCHOOL_NAME = 'SMK UJIAN TERUS';
+    private const DEFAULT_SCHOOL_DEPARTMENT = 'Multimedia dan TBSM';
+    private const DEFAULT_SCHOOL_ADDRESS = 'Jl. Selalu Memikirkan Ujian';
+
     public function edit(Request $request): View
     {
-        $setting = $request->user()->printSetting()->firstOrNew([], [
-            'school_name' => 'SMK UJIAN TERUS',
-            'school_department' => 'Multimedia dan TBSM',
-            'school_address' => 'Jl. Selalu Memikirkan Ujian',
-        ]);
+        $setting = $request->user()->printSetting()->firstOrNew([], $this->defaultSettingData());
 
         return view('teacher.settings.print', [
             'setting' => $setting,
@@ -47,11 +47,7 @@ class PrintSettingController extends Controller
             'logo.max' => 'Ukuran logo maksimal 4 MB.',
         ]);
 
-        $setting = $teacher->printSetting()->firstOrCreate([], [
-            'school_name' => 'SMK UJIAN TERUS',
-            'school_department' => 'Multimedia dan TBSM',
-            'school_address' => 'Jl. Selalu Memikirkan Ujian',
-        ]);
+        $setting = $teacher->printSetting()->firstOrCreate([], $this->defaultSettingData());
 
         $logoPath = $setting->logo_path;
 
@@ -78,6 +74,23 @@ class PrintSettingController extends Controller
         return back()->with('status', 'Pengaturan print berhasil diperbarui.');
     }
 
+    public function reset(Request $request): RedirectResponse
+    {
+        $teacher = $request->user();
+        $setting = $teacher->printSetting()->firstOrCreate([], $this->defaultSettingData());
+
+        if ($setting->logo_path) {
+            Storage::disk('public')->delete($setting->logo_path);
+        }
+
+        $setting->update([
+            ...$this->defaultSettingData(),
+            'logo_path' => null,
+        ]);
+
+        return back()->with('status', 'Pengaturan print berhasil direset ke kondisi default.');
+    }
+
     public function showLogo(Request $request): BinaryFileResponse
     {
         $setting = $request->user()->printSetting;
@@ -102,12 +115,15 @@ class PrintSettingController extends Controller
             ]);
         }
 
-        foreach (['assets/school/logo-sekolah.png', 'assets/school/logo_sekolah.png'] as $fallbackPath) {
-            if (is_file(public_path($fallbackPath))) {
-                return asset($fallbackPath);
-            }
-        }
-
         return null;
+    }
+
+    private function defaultSettingData(): array
+    {
+        return [
+            'school_name' => self::DEFAULT_SCHOOL_NAME,
+            'school_department' => self::DEFAULT_SCHOOL_DEPARTMENT,
+            'school_address' => self::DEFAULT_SCHOOL_ADDRESS,
+        ];
     }
 }

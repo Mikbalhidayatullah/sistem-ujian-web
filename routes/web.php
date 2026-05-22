@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/print', [PrintSettingController::class, 'edit'])->name('settings.print.edit');
         Route::get('/settings/print/logo', [PrintSettingController::class, 'showLogo'])->name('settings.print.logo');
         Route::match(['put', 'patch'], '/settings/print', [PrintSettingController::class, 'update'])->name('settings.print.update');
+        Route::post('/settings/print/reset', [PrintSettingController::class, 'reset'])->name('settings.print.reset');
         Route::get('/exams', [TeacherExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/create', [TeacherExamController::class, 'create'])->name('exams.create');
         Route::post('/exams', [TeacherExamController::class, 'store'])->name('exams.store');

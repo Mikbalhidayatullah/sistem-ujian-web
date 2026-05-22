@@ -126,10 +126,22 @@
                     <button type="submit" class="dashboard-button-primary">
                         Simpan pengaturan print
                     </button>
+                    <button type="submit" form="print-settings-reset-form" class="dashboard-button-soft text-sm">
+                        Reset pengaturan print
+                    </button>
                     <a href="{{ route('teacher.dashboard') }}" class="dashboard-button-return">
                         Kembali ke dashboard
                     </a>
                 </div>
+            </form>
+
+            <form
+                id="print-settings-reset-form"
+                method="POST"
+                action="{{ route('teacher.settings.print.reset') }}"
+                onsubmit="return confirm('Reset pengaturan print ke kondisi default? Logo yang sedang tersimpan akan dihapus.');"
+            >
+                @csrf
             </form>
         </section>
 
