@@ -34,7 +34,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'dashboard.session'])->group(function () {
     Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [AuthController::class, 'profile'])->name('profile.show');
     Route::put('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');

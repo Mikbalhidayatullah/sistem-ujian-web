@@ -51,7 +51,7 @@
                             </div>
                         </div>
 
-                        <form method="POST" action="{{ route('teacher.question-bank.destroy', $questionBank) }}" onsubmit="return confirm('Hapus soal ini dari bank soal mapel?');">
+                        <form method="POST" action="{{ route('teacher.question-bank.destroy', $questionBank) }}" data-confirm-action="delete-bank-question" data-confirm-keyword="HAPUS" data-confirm-message="Hapus soal ini dari bank soal mapel?">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">

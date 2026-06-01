@@ -4,7 +4,7 @@
             <div class="flex flex-wrap items-center gap-3">
                 <x-ui.dashboard-pill>{{ $exam->attempts->count() }} peserta</x-ui.dashboard-pill>
                 @if ($exam->attempts->isNotEmpty())
-                    <form method="POST" action="{{ route('teacher.exams.attempts.destroy-all', $exam) }}" onsubmit="return confirm('Hapus semua data peserta untuk ujian ini? Jawaban, nilai, dan pelanggaran peserta akan ikut dihapus.');">
+                    <form method="POST" action="{{ route('teacher.exams.attempts.destroy-all', $exam) }}" data-confirm-action="delete-all-attempts" data-confirm-keyword="HAPUS" data-confirm-message="Hapus semua data peserta untuk ujian ini? Jawaban, nilai, dan pelanggaran peserta akan ikut dihapus.">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
@@ -49,7 +49,7 @@
                             <td class="px-4 py-3">{{ $attempt->status }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-end">
-                                    <form method="POST" action="{{ route('teacher.exams.attempts.destroy', [$exam, $attempt]) }}" onsubmit="return confirm('Hapus data peserta {{ $attempt->participantName() }}? Jawaban, nilai, dan pelanggarannya akan ikut dihapus.');">
+                                    <form method="POST" action="{{ route('teacher.exams.attempts.destroy', [$exam, $attempt]) }}" data-confirm-action="delete-attempt" data-confirm-keyword="HAPUS" data-confirm-message="Hapus data peserta {{ $attempt->participantName() }}? Jawaban, nilai, dan pelanggarannya akan ikut dihapus.">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
@@ -90,7 +90,7 @@
                     <span>Pelanggaran: {{ $attempt->violation_count }}</span>
                     <span>Status: {{ $attempt->status }}</span>
                 </div>
-                <form method="POST" action="{{ route('teacher.exams.attempts.destroy', [$exam, $attempt]) }}" class="mt-4" onsubmit="return confirm('Hapus data peserta {{ $attempt->participantName() }}? Jawaban, nilai, dan pelanggarannya akan ikut dihapus.');">
+                <form method="POST" action="{{ route('teacher.exams.attempts.destroy', [$exam, $attempt]) }}" class="mt-4" data-confirm-action="delete-attempt" data-confirm-keyword="HAPUS" data-confirm-message="Hapus data peserta {{ $attempt->participantName() }}? Jawaban, nilai, dan pelanggarannya akan ikut dihapus.">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="dashboard-button-danger w-full text-xs">

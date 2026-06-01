@@ -22,7 +22,7 @@
                         <button type="submit" form="default-question-points-form" class="dashboard-button-soft px-4 py-2 text-xs">
                             Simpan
                         </button>
-                        <form method="POST" action="{{ route('teacher.exams.questions.destroy-all', $exam) }}" onsubmit="return confirm('Hapus semua soal pada bank soal ini? Semua jawaban siswa untuk soal-soal ini akan ikut dihapus.');">
+                        <form method="POST" action="{{ route('teacher.exams.questions.destroy-all', $exam) }}" data-confirm-action="delete-all-questions" data-confirm-keyword="HAPUS" data-confirm-message="Hapus semua soal pada bank soal ini? Semua jawaban siswa untuk soal-soal ini akan ikut dihapus.">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
@@ -40,6 +40,8 @@
                 <div class="dashboard-muted-card p-5">
                     @php
                         $isEditing = (string) old('editing_question_id') === (string) $question->id;
+                        $questionOptions = $question->options->values();
+                        $correctOptionIndex = $questionOptions->search(fn ($item) => $item->is_correct);
                     @endphp
 
                     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -81,7 +83,7 @@
                     <div class="mt-4 grid gap-3 md:grid-cols-2">
                         @foreach ($question->options as $option)
                             <div class="rounded-[1.25rem] border {{ $option->is_correct ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white' }} p-4 text-sm text-slate-700">
-                                {{ $option->position }}. {{ $option->option_text }}
+                                {{ chr(64 + (int) $option->position) }}. {{ $option->option_text }}
                             </div>
                         @endforeach
                     </div>
@@ -181,7 +183,10 @@
                                 <div class="border-t border-slate-200 pt-4">
                                     <p class="text-sm font-semibold text-slate-600">Opsi jawaban</p>
                                     <div class="mt-3 grid gap-3 md:grid-cols-2">
-                                        @foreach ($question->options as $optionIndex => $option)
+                                        @for ($optionIndex = 0; $optionIndex < 5; $optionIndex++)
+                                            @php
+                                                $option = $questionOptions->get($optionIndex);
+                                            @endphp
                                             <label
                                                 class="question-option-editor rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4"
                                                 data-question-option-editor
@@ -194,7 +199,7 @@
                                                             name="correct_option"
                                                             value="{{ $optionIndex }}"
                                                             data-question-option-radio
-                                                            @checked((string) (old('editing_question_id') == $question->id ? old('correct_option', $question->options->search(fn ($item) => $item->is_correct)) : $question->options->search(fn ($item) => $item->is_correct)) === (string) $optionIndex)
+                                                            @checked((string) (old('editing_question_id') == $question->id ? old('correct_option', $correctOptionIndex) : $correctOptionIndex) === (string) $optionIndex)
                                                         >
                                                         Benar
                                                     </span>
@@ -203,11 +208,12 @@
                                                     type="text"
                                                     name="options[]"
                                                     class="dashboard-input mt-3"
-                                                    value="{{ old('editing_question_id') == $question->id ? old('options.'.$optionIndex) : $option->option_text }}"
-                                                    required
+                                                    value="{{ old('editing_question_id') == $question->id ? old('options.'.$optionIndex) : $option?->option_text }}"
+                                                    placeholder="{{ $optionIndex === 4 ? 'Opsional, isi jika butuh jawaban E' : '' }}"
+                                                    @required($optionIndex < 4)
                                                 >
                                             </label>
-                                        @endforeach
+                                        @endfor
                                     </div>
                                 </div>
 
@@ -242,7 +248,9 @@
                                 method="POST"
                                 action="{{ route('teacher.exams.questions.destroy', [$exam, $question]) }}"
                                 class="hidden"
-                                onsubmit="return confirm('Hapus soal ini? Jawaban dan pengaruh nilainya akan ikut diperbarui.')"
+                                data-confirm-action="delete-question"
+                                data-confirm-keyword="HAPUS"
+                                data-confirm-message="Hapus soal ini? Jawaban dan pengaruh nilainya akan ikut diperbarui."
                             >
                                 @csrf
                                 @method('DELETE')

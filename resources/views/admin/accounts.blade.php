@@ -110,7 +110,7 @@
                         <span class="dashboard-pill">Admin only</span>
                     </div>
 
-                    <form method="POST" action="{{ route('admin.teachers.reset-password', $editingTeacher) }}" class="mt-6 space-y-4">
+                    <form method="POST" action="{{ route('admin.teachers.reset-password', $editingTeacher) }}" class="mt-6 space-y-4" data-confirm-action="reset-teacher-password" data-confirm-keyword="RESET" data-confirm-message="Reset password untuk {{ $editingTeacher->name }}? Password lama akan langsung digantikan.">
                         @csrf
 
                         <div class="grid gap-4 lg:grid-cols-2">

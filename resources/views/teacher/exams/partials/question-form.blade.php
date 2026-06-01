@@ -40,12 +40,12 @@
                         <p class="dashboard-kicker">Mode Manual</p>
                         <h3 class="mt-2 text-xl font-bold text-slate-900">Tambah satu soal baru</h3>
                         <p class="mt-3 text-sm leading-7 text-slate-500">
-                            Isi pertanyaan, atur poin, lalu pilih satu jawaban yang benar dari empat opsi.
+                            Isi pertanyaan, atur poin, lalu pilih satu jawaban yang benar. Opsi E boleh dikosongkan jika tidak dipakai.
                         </p>
                     </div>
 
                     <div class="grid gap-2 text-xs sm:flex sm:flex-wrap">
-                        <x-ui.dashboard-pill>4 opsi jawaban</x-ui.dashboard-pill>
+                        <x-ui.dashboard-pill>4-5 opsi jawaban</x-ui.dashboard-pill>
                         <x-ui.dashboard-pill tone="slate">Urutan awal: {{ old('position', $exam->questions->count() + 1) }}</x-ui.dashboard-pill>
                         <x-ui.dashboard-pill tone="info">Mendukung gambar atau video</x-ui.dashboard-pill>
                     </div>
@@ -73,7 +73,7 @@
                     <div class="border-t border-slate-200 pt-4">
                         <p class="text-sm font-semibold text-slate-600">Opsi jawaban</p>
                         <div class="mt-3 grid gap-3 md:grid-cols-2">
-                            @for ($i = 0; $i < 4; $i++)
+                            @for ($i = 0; $i < 5; $i++)
                                 <label class="question-option-editor dashboard-muted-card p-4" data-question-option-editor>
                                     <span class="flex items-center justify-between text-sm font-semibold text-slate-700">
                                         Opsi {{ chr(65 + $i) }}
@@ -88,7 +88,14 @@
                                             Benar
                                         </span>
                                     </span>
-                                    <input type="text" name="options[]" class="dashboard-input mt-3" value="{{ old('options.'.$i) }}" required>
+                                    <input
+                                        type="text"
+                                        name="options[]"
+                                        class="dashboard-input mt-3"
+                                        value="{{ old('options.'.$i) }}"
+                                        placeholder="{{ $i === 4 ? 'Opsional, isi jika butuh jawaban E' : '' }}"
+                                        @required($i < 4)
+                                    >
                                 </label>
                             @endfor
                         </div>
@@ -137,6 +144,7 @@ A. Jakarta
 B. Bandung
 C. Surabaya
 D. Medan
+E. Bogor
 Jawaban: A
 Poin: 10
 
@@ -162,7 +170,7 @@ Jawaban: B</pre>
                             <p class="text-sm text-rose-500">{{ $message }}</p>
                         @enderror
                         <p class="text-xs leading-6 text-slate-500">
-                            Pisahkan setiap soal dengan satu baris kosong. Gunakan opsi A sampai D lalu akhiri dengan baris <span class="font-semibold text-sky-600">Jawaban:</span> atau <span class="font-semibold text-sky-600">Kunci:</span>.
+                            Pisahkan setiap soal dengan satu baris kosong. Gunakan opsi A sampai D, atau tambahkan E bila diperlukan, lalu akhiri dengan baris <span class="font-semibold text-sky-600">Jawaban:</span> atau <span class="font-semibold text-sky-600">Kunci:</span>.
                         </p>
                     </div>
                 </div>

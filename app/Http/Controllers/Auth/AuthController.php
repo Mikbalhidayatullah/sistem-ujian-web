@@ -57,6 +57,7 @@ class AuthController extends Controller
 
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
+        $request->session()->put('dashboard_last_activity_at', time());
 
         return redirect()->intended(route('dashboard'));
     }
@@ -65,6 +66,7 @@ class AuthController extends Controller
     {
         Auth::logout();
 
+        $request->session()->forget('dashboard_last_activity_at');
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

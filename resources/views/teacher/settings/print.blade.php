@@ -139,7 +139,9 @@
                 id="print-settings-reset-form"
                 method="POST"
                 action="{{ route('teacher.settings.print.reset') }}"
-                onsubmit="return confirm('Reset pengaturan print ke kondisi default? Logo yang sedang tersimpan akan dihapus.');"
+                data-confirm-action="reset-print-settings"
+                data-confirm-keyword="RESET"
+                data-confirm-message="Reset pengaturan print ke kondisi default? Logo yang sedang tersimpan akan dihapus."
             >
                 @csrf
             </form>

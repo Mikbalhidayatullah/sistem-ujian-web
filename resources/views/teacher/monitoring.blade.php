@@ -114,7 +114,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <span class="dashboard-pill">{{ $violations->total() }} total data</span>
                     @if ($violations->total() > 0)
-                        <form method="POST" action="{{ route('teacher.monitoring.destroy-all') }}" onsubmit="return confirm('Hapus semua data monitoring pelanggaran untuk semua ujian Anda?');">
+                        <form method="POST" action="{{ route('teacher.monitoring.destroy-all') }}" data-confirm-action="delete-all-monitoring" data-confirm-keyword="HAPUS" data-confirm-message="Hapus semua data monitoring pelanggaran untuk semua ujian Anda? Tindakan ini tidak bisa dibatalkan.">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
@@ -154,7 +154,7 @@
                         </div>
 
                         <div class="mt-4 flex justify-end">
-                            <form method="POST" action="{{ route('teacher.monitoring.destroy', $violation) }}" onsubmit="return confirm('Hapus catatan monitoring untuk {{ $violation->attempt->participantName() }}?');">
+                            <form method="POST" action="{{ route('teacher.monitoring.destroy', $violation) }}" data-confirm-action="delete-monitoring" data-confirm-keyword="HAPUS" data-confirm-message="Hapus catatan monitoring untuk {{ $violation->attempt->participantName() }}?">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">

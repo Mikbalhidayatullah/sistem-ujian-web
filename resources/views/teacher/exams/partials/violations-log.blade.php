@@ -5,7 +5,7 @@
                 <x-ui.dashboard-pill>5 terbaru</x-ui.dashboard-pill>
                 <x-ui.dashboard-pill>refresh 20 detik</x-ui.dashboard-pill>
                 @if ($violations->isNotEmpty())
-                    <form method="POST" action="{{ route('teacher.exams.violations.destroy-all', $exam) }}" onsubmit="return confirm('Hapus semua log pelanggaran pada ujian ini?');">
+                    <form method="POST" action="{{ route('teacher.exams.violations.destroy-all', $exam) }}" data-confirm-action="delete-all-violations" data-confirm-keyword="HAPUS" data-confirm-message="Hapus semua log pelanggaran pada ujian ini?">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
@@ -28,7 +28,7 @@
                             @endif
                             <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-700">{{ str_replace('_', ' ', $violation->violation_type) }}</p>
                         </div>
-                        <form method="POST" action="{{ route('teacher.exams.violations.destroy', [$exam, $violation]) }}" onsubmit="return confirm('Hapus catatan pelanggaran untuk {{ $violation->attempt->participantName() }}?');">
+                        <form method="POST" action="{{ route('teacher.exams.violations.destroy', [$exam, $violation]) }}" data-confirm-action="delete-violation" data-confirm-keyword="HAPUS" data-confirm-message="Hapus catatan pelanggaran untuk {{ $violation->attempt->participantName() }}?">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">

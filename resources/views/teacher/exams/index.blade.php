@@ -92,7 +92,7 @@
                                             </svg>
                                             Buka detail
                                         </a>
-                                        <form method="POST" action="{{ route('teacher.exams.archive', $exam) }}" onsubmit="return confirm('Arsipkan ujian ini? Ujian akan dipindahkan dari daftar aktif dan akses siswa ditutup.');">
+                                        <form method="POST" action="{{ route('teacher.exams.archive', $exam) }}" data-confirm-action="archive-exam" data-confirm-keyword="ARSIP" data-confirm-message="Arsipkan ujian ini? Ujian akan dipindahkan dari daftar aktif dan akses siswa ditutup.">
                                             @csrf
                                             <button type="submit" class="dashboard-button-return gap-2">
                                                 <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -102,7 +102,7 @@
                                                 Arsipkan
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" onsubmit="return confirm('Hapus ujian ini? Semua soal, sesi, jawaban, dan log pelanggaran akan ikut dihapus.');">
+                                        <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" data-confirm-action="delete-exam" data-confirm-keyword="HAPUS" data-confirm-message="Hapus ujian ini? Semua soal, sesi, jawaban, dan log pelanggaran akan ikut dihapus.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="dashboard-button-danger gap-2">
@@ -185,7 +185,7 @@
                                                 Pulihkan
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" onsubmit="return confirm('Hapus permanen ujian arsip ini? Semua data terkait ikut dihapus.');">
+                                        <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" data-confirm-action="delete-archived-exam" data-confirm-keyword="HAPUS" data-confirm-message="Hapus permanen ujian arsip ini? Semua data terkait ikut dihapus.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="dashboard-button-danger gap-2">

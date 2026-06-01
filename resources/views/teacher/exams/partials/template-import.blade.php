@@ -14,6 +14,7 @@ A. Jakarta
 B. Bandung
 C. Surabaya
 D. Medan
+E. Bogor
 Jawaban: A
 Poin: 10
 
@@ -51,7 +52,7 @@ Jawaban: B</pre>
                     <p class="text-sm text-rose-500">{{ $message }}</p>
                 @enderror
                 <p class="text-xs leading-6 text-slate-500">
-                    Pisahkan setiap soal dengan satu baris kosong. Gunakan opsi A sampai D lalu akhiri dengan baris <span class="font-semibold text-sky-600">Jawaban:</span> atau <span class="font-semibold text-sky-600">Kunci:</span>.
+                    Pisahkan setiap soal dengan satu baris kosong. Gunakan opsi A sampai D, atau tambahkan E bila diperlukan, lalu akhiri dengan baris <span class="font-semibold text-sky-600">Jawaban:</span> atau <span class="font-semibold text-sky-600">Kunci:</span>.
                 </p>
             </div>
         </div>

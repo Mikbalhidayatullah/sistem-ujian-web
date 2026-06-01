@@ -95,7 +95,7 @@
                                 </div>
                                 <h3 class="mt-3 text-lg font-bold leading-8 text-slate-900">{!! nl2br(e($insight['prompt'])) !!}</h3>
                                 <p class="mt-2 text-sm text-slate-500">
-                                    Kunci: {{ $insight['correct_option_position'] ? $insight['correct_option_position'].'. ' : '' }}{{ $insight['correct_option'] ?? 'Belum diatur' }}
+                                    Kunci: {{ $insight['correct_option_position'] ? chr(64 + (int) $insight['correct_option_position']).'. ' : '' }}{{ $insight['correct_option'] ?? 'Belum diatur' }}
                                 </p>
                             </div>
 
@@ -173,7 +173,7 @@
                                             <td class="px-4 py-3 font-semibold text-slate-900">{{ $response['student_name'] }}</td>
                                             <td class="px-4 py-3">
                                                 @if ($response['selected_option'])
-                                                    {{ $response['selected_option_position'] ? $response['selected_option_position'].'. ' : '' }}{{ $response['selected_option'] }}
+                                                    {{ $response['selected_option_position'] ? chr(64 + (int) $response['selected_option_position']).'. ' : '' }}{{ $response['selected_option'] }}
                                                 @else
                                                     <span class="text-slate-400">Belum dijawab</span>
                                                 @endif

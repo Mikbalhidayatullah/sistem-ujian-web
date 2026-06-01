@@ -12,7 +12,7 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
-                <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" onsubmit="return confirm('Hapus ujian ini? Semua soal, sesi, jawaban, log pelanggaran, dan media soal akan ikut dihapus.');">
+                <form method="POST" action="{{ route('teacher.exams.destroy', $exam) }}" data-confirm-action="delete-exam" data-confirm-keyword="HAPUS" data-confirm-message="Hapus ujian ini? Semua soal, sesi, jawaban, log pelanggaran, dan media soal akan ikut dihapus.">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="dashboard-button-danger">
@@ -30,7 +30,7 @@
                         </button>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('teacher.exams.archive', $exam) }}" onsubmit="return confirm('Arsipkan ujian ini? Ujian akan dipindahkan dari daftar aktif dan akses siswa ditutup.');">
+                    <form method="POST" action="{{ route('teacher.exams.archive', $exam) }}" data-confirm-action="archive-exam" data-confirm-keyword="ARSIP" data-confirm-message="Arsipkan ujian ini? Ujian akan dipindahkan dari daftar aktif dan akses siswa ditutup.">
                         @csrf
                         <button type="submit" class="dashboard-button-return">
                             Arsipkan ujian

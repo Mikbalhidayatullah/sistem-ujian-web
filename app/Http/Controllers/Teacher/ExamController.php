@@ -391,10 +391,15 @@ class ExamController extends Controller
             'points' => ['required', 'integer', 'min:1', 'max:100'],
             'position' => ['nullable', 'integer', 'min:1'],
             'media' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg', 'max:20480'],
-            'options' => ['required', 'array', 'size:4'],
-            'options.*' => ['required', 'string', 'max:255'],
-            'correct_option' => ['required', 'integer', 'between:0,3'],
+            'options' => ['required', 'array', 'min:4', 'max:5'],
+            'options.*' => ['nullable', 'string', 'max:255'],
+            'correct_option' => ['required', 'integer', 'between:0,4'],
         ]);
+
+        $optionTexts = $this->normalizeSubmittedOptions(
+            $data['options'],
+            (int) $data['correct_option']
+        );
 
         $mediaPath = null;
         $mediaType = null;
@@ -413,7 +418,7 @@ class ExamController extends Controller
             'media_type' => $mediaType,
         ]);
 
-        foreach ($data['options'] as $index => $optionText) {
+        foreach ($optionTexts as $index => $optionText) {
             $question->options()->create([
                 'option_text' => $optionText,
                 'is_correct' => $index === (int) $data['correct_option'],
@@ -587,12 +592,17 @@ class ExamController extends Controller
             'position' => ['required', 'integer', 'min:1'],
             'media' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg', 'max:20480'],
             'remove_media' => ['nullable', 'boolean'],
-            'options' => ['required', 'array', 'size:4'],
-            'options.*' => ['required', 'string', 'max:255'],
-            'correct_option' => ['required', 'integer', 'between:0,3'],
+            'options' => ['required', 'array', 'min:4', 'max:5'],
+            'options.*' => ['nullable', 'string', 'max:255'],
+            'correct_option' => ['required', 'integer', 'between:0,4'],
         ]);
 
-        DB::transaction(function () use ($request, $exam, $question, $data): void {
+        $optionTexts = $this->normalizeSubmittedOptions(
+            $data['options'],
+            (int) $data['correct_option']
+        );
+
+        DB::transaction(function () use ($request, $exam, $question, $data, $optionTexts): void {
             $mediaPath = $question->media_path;
             $mediaType = $question->media_type;
 
@@ -620,14 +630,7 @@ class ExamController extends Controller
                 'media_type' => $mediaType,
             ]);
 
-            $question->loadMissing('options');
-
-            foreach ($question->options->values() as $index => $option) {
-                $option->update([
-                    'option_text' => $data['options'][$index],
-                    'is_correct' => $index === (int) $data['correct_option'],
-                ]);
-            }
+            $this->syncQuestionOptions($question, $optionTexts, (int) $data['correct_option']);
 
             $this->reorderQuestionPosition($exam, $question, (int) $data['position']);
             $this->refreshExamScores($exam, $question->fresh('options'));
@@ -708,12 +711,12 @@ class ExamController extends Controller
                     continue;
                 }
 
-                if (preg_match('/^([A-D])[\.\)]\s*(.+)$/iu', $line, $matches)) {
-                    $options[] = trim($matches[2]);
+                if (preg_match('/^([A-E])[\.\)]\s*(.+)$/iu', $line, $matches)) {
+                    $options[strtoupper($matches[1])] = trim($matches[2]);
                     continue;
                 }
 
-                if (preg_match('/^(jawaban|kunci)\s*[:\-]\s*([A-D])$/iu', $line, $matches)) {
+                if (preg_match('/^(jawaban|kunci)\s*[:\-]\s*([A-E])$/iu', $line, $matches)) {
                     $correctLetter = strtoupper($matches[2]);
                     continue;
                 }
@@ -735,9 +738,28 @@ class ExamController extends Controller
                 ]);
             }
 
-            if (count($options) !== 4) {
+            foreach (['A', 'B', 'C', 'D'] as $requiredOptionLetter) {
+                if (blank($options[$requiredOptionLetter] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'question_template' => 'Soal ke-'.$questionNumber.' wajib memiliki opsi '.$requiredOptionLetter.'.',
+                    ]);
+                }
+            }
+
+            $optionTexts = [
+                $options['A'],
+                $options['B'],
+                $options['C'],
+                $options['D'],
+            ];
+
+            if (filled($options['E'] ?? null)) {
+                $optionTexts[] = $options['E'];
+            }
+
+            if (count($optionTexts) < 4 || count($optionTexts) > 5) {
                 throw ValidationException::withMessages([
-                    'question_template' => 'Soal ke-'.$questionNumber.' harus memiliki tepat 4 opsi jawaban A sampai D.',
+                    'question_template' => 'Soal ke-'.$questionNumber.' harus memiliki 4 atau 5 opsi jawaban.',
                 ]);
             }
 
@@ -749,16 +771,16 @@ class ExamController extends Controller
 
             $correctIndex = ord($correctLetter) - 65;
 
-            if ($correctIndex < 0 || $correctIndex > 3) {
+            if ($correctIndex < 0 || $correctIndex >= count($optionTexts)) {
                 throw ValidationException::withMessages([
-                    'question_template' => 'Soal ke-'.$questionNumber.' memakai kunci jawaban yang tidak valid.',
+                    'question_template' => 'Soal ke-'.$questionNumber.' memakai kunci jawaban yang tidak tersedia pada opsi.',
                 ]);
             }
 
             $questions[] = [
                 'prompt' => $prompt,
                 'points' => max(1, min(100, $points)),
-                'options' => $options,
+                'options' => $optionTexts,
                 'correct_index' => $correctIndex,
             ];
         }
@@ -896,6 +918,72 @@ class ExamController extends Controller
                     'score' => round(($earnedPoints / $totalPoints) * 100, 2),
                 ]);
             });
+    }
+
+    private function normalizeSubmittedOptions(array $options, int $correctIndex): array
+    {
+        $optionTexts = array_map(
+            fn ($option): string => trim((string) $option),
+            array_values($options)
+        );
+
+        while ($optionTexts !== [] && end($optionTexts) === '') {
+            array_pop($optionTexts);
+        }
+
+        if (count($optionTexts) < 4 || count($optionTexts) > 5) {
+            throw ValidationException::withMessages([
+                'options' => 'Soal harus memiliki minimal 4 opsi dan maksimal 5 opsi jawaban.',
+            ]);
+        }
+
+        foreach ($optionTexts as $index => $optionText) {
+            if ($optionText === '') {
+                throw ValidationException::withMessages([
+                    'options.'.($index) => 'Opsi '.chr(65 + $index).' wajib diisi jika opsi setelahnya digunakan.',
+                ]);
+            }
+        }
+
+        if (! array_key_exists($correctIndex, $optionTexts)) {
+            throw ValidationException::withMessages([
+                'correct_option' => 'Kunci jawaban yang dipilih belum memiliki isi opsi.',
+            ]);
+        }
+
+        return $optionTexts;
+    }
+
+    private function syncQuestionOptions(Question $question, array $optionTexts, int $correctIndex): void
+    {
+        $existingOptions = $question->options()
+            ->orderBy('position')
+            ->get()
+            ->values();
+
+        foreach ($optionTexts as $index => $optionText) {
+            $option = $existingOptions->get($index);
+
+            if ($option) {
+                $option->update([
+                    'option_text' => $optionText,
+                    'is_correct' => $index === $correctIndex,
+                    'position' => $index + 1,
+                ]);
+
+                continue;
+            }
+
+            $question->options()->create([
+                'option_text' => $optionText,
+                'is_correct' => $index === $correctIndex,
+                'position' => $index + 1,
+            ]);
+        }
+
+        $existingOptions
+            ->slice(count($optionTexts))
+            ->each(fn ($option) => $option->delete());
     }
 
     private function reorderQuestionPosition(Exam $exam, Question $question, int $newPosition): void

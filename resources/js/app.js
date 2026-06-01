@@ -1290,6 +1290,47 @@ const initPrintSettingsPreview = () => {
     });
 };
 
+const initActionConfirmations = () => {
+    document.querySelectorAll('form[data-confirm-action]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.confirmed === 'true') {
+                form.dataset.confirmed = 'false';
+                return;
+            }
+
+            event.preventDefault();
+
+            const message =
+                form.dataset.confirmMessage ||
+                'Aksi ini bersifat sensitif dan akan mengubah data. Lanjutkan?';
+            const keyword = (form.dataset.confirmKeyword || '').trim();
+
+            if (!keyword) {
+                if (window.confirm(message)) {
+                    form.dataset.confirmed = 'true';
+                    form.requestSubmit();
+                }
+
+                return;
+            }
+
+            const answer = window.prompt(`${message}\n\nKetik ${keyword} untuk melanjutkan.`);
+
+            if (answer === null) {
+                return;
+            }
+
+            if (answer.trim().toUpperCase() !== keyword.toUpperCase()) {
+                window.alert(`Aksi dibatalkan. Kata konfirmasi harus ${keyword}.`);
+                return;
+            }
+
+            form.dataset.confirmed = 'true';
+            form.requestSubmit();
+        });
+    });
+};
+
 initThemeToggle();
 initAutoRefreshCards();
 initScrollTopButton();
@@ -1303,3 +1344,4 @@ initInsightSortSelect();
 initQuestionEditors();
 initQuestionOptionSelection();
 initPrintSettingsPreview();
+initActionConfirmations();

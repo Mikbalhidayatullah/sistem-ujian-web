@@ -160,13 +160,12 @@
                                             </svg>
                                             Edit
                                         </a>
-                                        <form method="POST" action="{{ route('teacher.subjects.destroy', $subject) }}">
+                                        <form method="POST" action="{{ route('teacher.subjects.destroy', $subject) }}" data-confirm-action="delete-subject" data-confirm-keyword="HAPUS" data-confirm-message="Hapus mata pelajaran ini?">
                                             @csrf
                                             @method('DELETE')
                                             <button
                                                 type="submit"
                                                 class="dashboard-button-danger"
-                                                onclick="return confirm('Hapus mata pelajaran ini?')"
                                             >
                                                 <svg class="dashboard-inline-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                                     <path d="M5 7h14M9 7V5.5h6V7M8.5 10.5v6M12 10.5v6M15.5 10.5v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
