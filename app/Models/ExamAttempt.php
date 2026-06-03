@@ -28,6 +28,8 @@ class ExamAttempt extends Model
         'score',
         'violation_count',
         'last_activity_at',
+        'locked_at',
+        'locked_reason',
         'submitted_reason',
     ];
 
@@ -37,6 +39,7 @@ class ExamAttempt extends Model
             'started_at' => 'datetime',
             'submitted_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'locked_at' => 'datetime',
             'score' => 'decimal:2',
             'question_order' => 'array',
         ];
@@ -65,6 +68,20 @@ class ExamAttempt extends Model
     public function isSubmitted(): bool
     {
         return in_array($this->status, [self::STATUS_SUBMITTED, self::STATUS_AUTO_SUBMITTED], true);
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null && ! $this->isSubmitted();
+    }
+
+    public function unlockViolationLock(): void
+    {
+        $this->update([
+            'locked_at' => null,
+            'locked_reason' => null,
+            'last_activity_at' => now(),
+        ]);
     }
 
     public function expiresAt(): ?Carbon

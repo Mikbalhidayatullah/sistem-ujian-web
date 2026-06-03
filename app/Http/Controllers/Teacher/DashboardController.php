@@ -89,6 +89,18 @@ class DashboardController extends Controller
         return back()->with('status', 'Catatan monitoring untuk '.$participantName.' berhasil dihapus.');
     }
 
+    public function unlockAttempt(ExamAttempt $attempt): RedirectResponse
+    {
+        $teacher = auth()->user();
+
+        abort_unless($attempt->exam?->teacher_id === $teacher->id, 403);
+
+        $participantName = $attempt->participantName();
+        $attempt->unlockViolationLock();
+
+        return back()->with('status', 'Kunci ujian untuk '.$participantName.' berhasil dibuka.');
+    }
+
     public function destroyAllMonitoringViolations(): RedirectResponse
     {
         $teacher = auth()->user();

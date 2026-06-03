@@ -140,6 +140,10 @@ class ExamController extends Controller
         $insightParticipants = $exam->attempts
             ->filter(fn ($attempt) => $attempt->isSubmitted() || $attempt->answers->isNotEmpty())
             ->count();
+        $submittedAttemptsCount = $exam->attempts->whereNotNull('score')->count();
+        $totalViolationsCount = ExamViolation::query()
+            ->whereHas('attempt', fn ($query) => $query->where('exam_id', $exam->id))
+            ->count();
 
         $violations = ExamViolation::query()
             ->whereHas('attempt', fn ($query) => $query->where('exam_id', $exam->id))
@@ -163,6 +167,8 @@ class ExamController extends Controller
                 'most_correct' => $insightParticipants > 0 ? $questionInsights->sortByDesc('correct_percentage')->first() : null,
                 'most_wrong' => $insightParticipants > 0 ? $questionInsights->sortByDesc('wrong_percentage')->first() : null,
             ],
+            'submittedAttemptsCount' => $submittedAttemptsCount,
+            'totalViolationsCount' => $totalViolationsCount,
             'questionInsightSort' => $questionInsightSort,
         ]);
     }

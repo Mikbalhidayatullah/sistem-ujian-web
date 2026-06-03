@@ -3,6 +3,7 @@
         $latestCount = $violations->count();
         $tabHiddenCount = $violations->getCollection()->where('violation_type', 'tab_hidden')->count();
         $fullscreenExitCount = $violations->getCollection()->where('violation_type', 'fullscreen_exit')->count();
+        $lockedAttemptCount = $violations->getCollection()->filter(fn ($violation) => $violation->attempt?->isLocked())->count();
     @endphp
 
     <section class="space-y-8">
@@ -24,6 +25,7 @@
                     <span class="dashboard-pill">{{ $violations->total() }} total catatan</span>
                     <span class="dashboard-pill">Halaman {{ $violations->currentPage() }}</span>
                     <span class="dashboard-pill">{{ $latestCount }} data ditampilkan</span>
+                    <span class="dashboard-pill">{{ $lockedAttemptCount }} sesi terkunci</span>
                 </div>
             </div>
 
@@ -135,6 +137,11 @@
                                     <span class="rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
                                         {{ str_replace('_', ' ', $violation->violation_type) }}
                                     </span>
+                                    @if ($violation->attempt->isLocked())
+                                        <span class="rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-rose-700">
+                                            Sesi terkunci
+                                        </span>
+                                    @endif
                                 </div>
                                 @if ($violation->attempt->student_identifier)
                                     <p class="mt-2 text-xs font-semibold text-slate-500">{{ $violation->attempt->student_identifier }}</p>
@@ -153,7 +160,15 @@
                             {{ $violation->detail ?: 'Pelanggaran terdeteksi dari halaman ujian.' }}
                         </div>
 
-                        <div class="mt-4 flex justify-end">
+                        <div class="mt-4 flex flex-wrap justify-end gap-2">
+                            @if ($violation->attempt->isLocked())
+                                <form method="POST" action="{{ route('teacher.monitoring.attempts.unlock', $violation->attempt) }}" data-confirm-action="unlock-attempt" data-confirm-message="Buka kembali sesi ujian untuk {{ $violation->attempt->participantName() }}?">
+                                    @csrf
+                                    <button type="submit" class="dashboard-button-success px-4 py-2 text-xs">
+                                        Buka kunci ujian
+                                    </button>
+                                </form>
+                            @endif
                             <form method="POST" action="{{ route('teacher.monitoring.destroy', $violation) }}" data-confirm-action="delete-monitoring" data-confirm-keyword="HAPUS" data-confirm-message="Hapus catatan monitoring untuk {{ $violation->attempt->participantName() }}?">
                                 @csrf
                                 @method('DELETE')

@@ -461,16 +461,38 @@ const initExamSession = () => {
     const questionNavToggleLabel = root.querySelector('[data-question-nav-toggle-label]');
     const previousQuestionButton = root.querySelector('[data-question-nav-prev]');
     const nextQuestionButton = root.querySelector('[data-question-nav-next]');
+    const nextQuestionLabel = root.querySelector('[data-question-next-label]');
+    const questionDoubtButton = root.querySelector('[data-question-doubt-toggle]');
     const submitModal = root.querySelector('[data-submit-modal]');
     const submitModalMessage = root.querySelector('[data-submit-modal-message]');
     const submitConfirmButton = root.querySelector('[data-submit-confirm]');
     const submitCancelButton = root.querySelector('[data-submit-cancel]');
+    const violationLockOverlay = root.querySelector('[data-violation-lock-overlay]');
+    const violationLockReason = root.querySelector('[data-violation-lock-reason]');
+    const violationLockRefreshButton = root.querySelector('[data-violation-lock-refresh]');
     const saveUrl = root.dataset.saveUrl;
     const violationUrl = root.dataset.violationUrl;
     const violationsEnabled = root.dataset.violationsEnabled !== '0';
     const expiresAt = root.dataset.expiresAt ? new Date(root.dataset.expiresAt) : null;
     const totalQuestions = Number(root.dataset.totalQuestions || 0);
     const questionIds = Array.from(questionCards).map((card) => card.dataset.questionId);
+    const isExamPlayer = root.hasAttribute('data-exam-player');
+    const doubtStorageKey = `exam-attempt-${root.dataset.attemptId || 'active'}-doubted-questions`;
+    const readDoubtedQuestionIds = () => {
+        try {
+            return new Set(JSON.parse(window.localStorage.getItem(doubtStorageKey) || '[]').map(String));
+        } catch (error) {
+            return new Set();
+        }
+    };
+    const writeDoubtedQuestionIds = (questionIdSet) => {
+        try {
+            window.localStorage.setItem(doubtStorageKey, JSON.stringify(Array.from(questionIdSet)));
+        } catch (error) {
+            return null;
+        }
+    };
+    const doubtedQuestionIds = readDoubtedQuestionIds();
     let isSubmitting = false;
     let isRecordingViolation = false;
     let hasConfirmedSubmit = false;
@@ -479,6 +501,7 @@ const initExamSession = () => {
     let isQuestionNavExpanded = false;
     let pendingNavigationQuestionId = null;
     let pendingNavigationTimer = null;
+    let isExamLocked = root.dataset.attemptLocked === '1';
 
     const collectAnswers = () => {
         const payload = {};
@@ -503,11 +526,32 @@ const initExamSession = () => {
             const isAnswered = Boolean(answers[questionId]);
 
             button.classList.toggle('is-answered', isAnswered);
+            button.classList.toggle('is-doubted', doubtedQuestionIds.has(String(questionId)));
         });
+    };
+
+    const syncDoubtButtonState = () => {
+        if (!questionDoubtButton || !activeQuestionId) {
+            return;
+        }
+
+        const isDoubted = doubtedQuestionIds.has(String(activeQuestionId));
+
+        questionDoubtButton.classList.toggle('is-active', isDoubted);
+        questionDoubtButton.setAttribute('aria-pressed', String(isDoubted));
     };
 
     const setActiveQuestion = (questionId) => {
         activeQuestionId = String(questionId);
+
+        if (isExamPlayer) {
+            questionCards.forEach((card) => {
+                const isActiveCard = card.dataset.questionId === activeQuestionId;
+
+                card.classList.toggle('hidden', !isActiveCard);
+                card.classList.toggle('is-active', isActiveCard);
+            });
+        }
 
         questionNavButtons.forEach((button) => {
             button.classList.toggle('is-active', button.dataset.questionId === activeQuestionId);
@@ -519,8 +563,14 @@ const initExamSession = () => {
 
         previousQuestionButton?.toggleAttribute('disabled', isFirst);
         previousQuestionButton?.classList.toggle('is-disabled', isFirst);
-        nextQuestionButton?.toggleAttribute('disabled', isLast);
-        nextQuestionButton?.classList.toggle('is-disabled', isLast);
+        nextQuestionButton?.classList.toggle('is-finish', isLast);
+
+        if (nextQuestionLabel) {
+            nextQuestionLabel.textContent = isLast ? 'Selesai Ujian' : 'Selanjutnya';
+        }
+
+        syncDoubtButtonState();
+        syncQuestionNavState();
     };
 
     const getDockOffset = () => {
@@ -541,6 +591,15 @@ const initExamSession = () => {
         window.clearTimeout(pendingNavigationTimer);
         setActiveQuestion(questionId);
 
+        if (isExamPlayer) {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+            });
+            pendingNavigationQuestionId = null;
+            return;
+        }
+
         const targetTop = window.scrollY + targetCard.getBoundingClientRect().top - getDockOffset();
 
         window.scrollTo({
@@ -555,6 +614,10 @@ const initExamSession = () => {
     };
 
     const getCurrentQuestionId = () => {
+        if (isExamPlayer) {
+            return activeQuestionId;
+        }
+
         const dockOffset = getDockOffset();
         const visibleCards = Array.from(questionCards)
             .map((card) => ({
@@ -581,6 +644,14 @@ const initExamSession = () => {
 
     const syncQuestionNavVisibility = () => {
         if (!questionNavDock || !questionNavToggle || !questionNavTrack) {
+            return;
+        }
+
+        if (isExamPlayer) {
+            questionNavDock.classList.toggle('is-open', isQuestionNavExpanded);
+            questionNavDock.dataset.mobileCollapsed = isQuestionNavExpanded ? 'false' : 'true';
+            questionNavToggle.setAttribute('aria-expanded', String(isQuestionNavExpanded));
+
             return;
         }
 
@@ -652,21 +723,27 @@ const initExamSession = () => {
     };
 
     const saveProgress = async (force = false) => {
+        if (isExamLocked) {
+            return;
+        }
+
         if (isSubmitting && !force) {
             return;
         }
 
         try {
-            await sendJson(saveUrl, {
+            const result = await sendJson(saveUrl, {
                 answers: collectAnswers(),
             });
+
+            maybeHandleLockedResponse(result);
         } catch (error) {
             console.error('Gagal menyimpan jawaban', error);
         }
     };
 
     const finalizeSubmission = async () => {
-        if (isSubmitting) {
+        if (isSubmitting || isExamLocked) {
             return;
         }
 
@@ -694,8 +771,38 @@ const initExamSession = () => {
         submitModal.classList.add('flex');
     };
 
+    const setExamControlsDisabled = (disabled) => {
+        form?.querySelectorAll('input, button, textarea, select').forEach((control) => {
+            control.toggleAttribute('disabled', disabled);
+            control.classList.toggle('cursor-not-allowed', disabled);
+            control.classList.toggle('opacity-70', disabled);
+        });
+    };
+
+    const openViolationLockOverlay = (reason) => {
+        isExamLocked = true;
+        closeSubmitModal();
+
+        if (violationLockReason) {
+            violationLockReason.textContent = reason || root.dataset.lockedReason || 'Terdeteksi aktivitas yang melanggar aturan ujian.';
+        }
+
+        violationLockOverlay?.classList.add('is-open');
+        document.body.classList.add('overflow-hidden');
+        setExamControlsDisabled(true);
+    };
+
+    const maybeHandleLockedResponse = (result) => {
+        if (result?.locked) {
+            openViolationLockOverlay(result.locked_reason || result.message);
+            return true;
+        }
+
+        return false;
+    };
+
     const recordViolation = async (violationType, detail) => {
-        if (!violationsEnabled || isSubmitting || isRecordingViolation) {
+        if (!violationsEnabled || isSubmitting || isRecordingViolation || isExamLocked) {
             return;
         }
 
@@ -708,6 +815,10 @@ const initExamSession = () => {
                 detail,
                 answers: collectAnswers(),
             });
+
+            if (maybeHandleLockedResponse(result)) {
+                return;
+            }
 
             if (result.auto_submit) {
                 submitExam();
@@ -760,7 +871,11 @@ const initExamSession = () => {
                 ? 'danger'
                 : (totalSeconds <= 900 ? 'warning' : 'normal'));
 
-        const timeText = `Sisa waktu ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const timeText = isExamPlayer
+            ? (hours > 0
+                ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+            : `Sisa waktu ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
         countdownTargets.forEach((target) => {
             target.textContent = timeText;
@@ -775,7 +890,7 @@ const initExamSession = () => {
             event.preventDefault();
             scrollToQuestion(button.dataset.questionId);
 
-            if (isMobileViewport()) {
+            if (isExamPlayer || isMobileViewport()) {
                 isQuestionNavExpanded = false;
                 syncQuestionNavVisibility();
             }
@@ -795,13 +910,18 @@ const initExamSession = () => {
         const currentQuestionId = getCurrentQuestionId();
         const activeIndex = questionIds.indexOf(String(currentQuestionId));
 
+        if (isExamPlayer && activeIndex === questionIds.length - 1) {
+            form.requestSubmit();
+            return;
+        }
+
         if (activeIndex !== -1 && activeIndex < questionIds.length - 1) {
             scrollToQuestion(questionIds[activeIndex + 1]);
         }
     });
 
     questionNavToggle?.addEventListener('click', () => {
-        if (!isMobileViewport()) {
+        if (!isExamPlayer && !isMobileViewport()) {
             return;
         }
 
@@ -809,11 +929,27 @@ const initExamSession = () => {
         syncQuestionNavVisibility();
     });
 
+    questionDoubtButton?.addEventListener('click', () => {
+        if (!activeQuestionId) {
+            return;
+        }
+
+        if (doubtedQuestionIds.has(String(activeQuestionId))) {
+            doubtedQuestionIds.delete(String(activeQuestionId));
+        } else {
+            doubtedQuestionIds.add(String(activeQuestionId));
+        }
+
+        writeDoubtedQuestionIds(doubtedQuestionIds);
+        syncDoubtButtonState();
+        syncQuestionNavState();
+    });
+
     form.querySelectorAll('input[type="radio"][name^="answers["]').forEach((input) => {
         input.addEventListener('change', syncQuestionNavState);
     });
 
-    if (questionCards.length > 0 && 'IntersectionObserver' in window) {
+    if (!isExamPlayer && questionCards.length > 0 && 'IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
             const visibleEntry = entries
                 .filter((entry) => entry.isIntersecting)
@@ -836,6 +972,8 @@ const initExamSession = () => {
 
         questionCards.forEach((card) => observer.observe(card));
         setActiveQuestion(questionCards[0].dataset.questionId);
+    } else if (questionCards.length > 0) {
+        setActiveQuestion(questionCards[0].dataset.questionId);
     }
 
     if (examHero && examSessionDock) {
@@ -847,6 +985,12 @@ const initExamSession = () => {
     window.addEventListener('resize', syncQuestionNavVisibility);
 
     form.addEventListener('submit', async (event) => {
+        if (isExamLocked) {
+            event.preventDefault();
+            openViolationLockOverlay(root.dataset.lockedReason);
+            return;
+        }
+
         if (hasConfirmedSubmit || isSubmitting) {
             return;
         }
@@ -882,6 +1026,10 @@ const initExamSession = () => {
         }
     });
 
+    violationLockRefreshButton?.addEventListener('click', () => {
+        window.location.reload();
+    });
+
     form.querySelectorAll('input[type="radio"]').forEach((radio) => {
         radio.addEventListener('change', () => {
             saveProgress();
@@ -889,6 +1037,10 @@ const initExamSession = () => {
     });
 
     const requestFullscreenOnFirstInteraction = () => {
+        if (isExamLocked) {
+            return;
+        }
+
         if (document.fullscreenElement) {
             return;
         }
@@ -948,7 +1100,7 @@ const initExamSession = () => {
     });
 
     window.addEventListener('beforeunload', () => {
-        if (isSubmitting || !violationsEnabled) {
+        if (isSubmitting || isExamLocked || !violationsEnabled) {
             return;
         }
 
@@ -969,7 +1121,12 @@ const initExamSession = () => {
         }).catch(() => null);
     });
 
-    requestFullscreen();
+    if (!isExamLocked) {
+        requestFullscreen();
+    }
+    if (isExamLocked) {
+        openViolationLockOverlay(root.dataset.lockedReason);
+    }
     updateCountdown();
     syncQuestionNavState();
     syncDockState();
@@ -1046,6 +1203,68 @@ const initQuestionBuilderTabs = () => {
 
         setActiveTab(builder.dataset.defaultTab || 'manual');
     });
+};
+
+const initExamDetailTabs = () => {
+    const tabs = document.querySelector('[data-exam-tabs]');
+
+    if (!tabs || tabs.dataset.examTabsReady === 'true') {
+        return;
+    }
+
+    tabs.dataset.examTabsReady = 'true';
+
+    const buttons = Array.from(tabs.querySelectorAll('[data-exam-tab-button]'));
+    const panels = Array.from(tabs.querySelectorAll('[data-exam-tab-panel]'));
+    const defaultTab = tabs.dataset.defaultExamTab || buttons[0]?.dataset.examTabButton || 'summary';
+
+    if (buttons.length === 0 || panels.length === 0) {
+        return;
+    }
+
+    const tabNames = new Set(buttons.map((button) => button.dataset.examTabButton));
+
+    const getHashTab = () => {
+        const hash = window.location.hash.replace('#exam-tab-', '');
+
+        return tabNames.has(hash) ? hash : null;
+    };
+
+    const activateTab = (tab, updateHash = true) => {
+        const activeTab = tabNames.has(tab) ? tab : defaultTab;
+
+        buttons.forEach((button) => {
+            const isActive = button.dataset.examTabButton === activeTab;
+
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-pressed', String(isActive));
+        });
+
+        panels.forEach((panel) => {
+            panel.classList.toggle('hidden', panel.dataset.examTabPanel !== activeTab);
+        });
+
+        if (updateHash) {
+            history.replaceState(null, '', `#exam-tab-${activeTab}`);
+        }
+    };
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            activateTab(button.dataset.examTabButton || 'summary');
+        });
+    });
+
+    window.addEventListener('hashchange', () => {
+        const hashTab = getHashTab();
+
+        if (hashTab) {
+            activateTab(hashTab, false);
+        }
+    });
+
+    activateTab(getHashTab() || defaultTab, false);
 };
 
 const initInsightSortSelect = () => {
@@ -1340,6 +1559,7 @@ initExamAccessForm();
 initExamSession();
 initInsightResponseFilters();
 initQuestionBuilderTabs();
+initExamDetailTabs();
 initInsightSortSelect();
 initQuestionEditors();
 initQuestionOptionSelection();

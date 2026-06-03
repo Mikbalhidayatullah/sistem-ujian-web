@@ -186,6 +186,14 @@ class AttemptController extends Controller
             return response()->json(['saved' => false, 'submitted' => true], 422);
         }
 
+        if ($attempt->isLocked()) {
+            return response()->json([
+                'saved' => false,
+                'locked' => true,
+                'message' => 'Ujian terkunci karena pelanggaran. Hubungi guru untuk membuka kembali.',
+            ], 423);
+        }
+
         $answers = $this->validatedAnswers($request, $attempt);
         $this->syncAnswers($attempt, $answers);
 
@@ -200,6 +208,12 @@ class AttemptController extends Controller
 
         if ($attempt->isSubmitted()) {
             return redirect()->route('exam.attempts.result', $attempt);
+        }
+
+        if ($attempt->isLocked()) {
+            return back()->withErrors([
+                'exam' => 'Ujian terkunci karena pelanggaran. Hubungi guru untuk membuka kembali.',
+            ]);
         }
 
         $answers = $this->validatedAnswers($request, $attempt);
@@ -243,6 +257,16 @@ class AttemptController extends Controller
             ]);
         }
 
+        if ($attempt->isLocked()) {
+            return response()->json([
+                'recorded' => false,
+                'auto_submit' => false,
+                'locked' => true,
+                'locked_reason' => $attempt->locked_reason ?: 'Ujian terkunci karena pelanggaran. Hubungi guru untuk membuka kembali.',
+                'violation_count' => $attempt->violation_count,
+            ]);
+        }
+
         if (! $attempt->exam->violations_enabled) {
             $attempt->update(['last_activity_at' => now()]);
 
@@ -265,6 +289,11 @@ class AttemptController extends Controller
             $this->syncAnswers($attempt, $this->filterAnswersForExam($attempt, $data['answers']));
         }
 
+        $displayReason = $this->violationReasonForStudent(
+            $data['violation_type'],
+            $data['detail'] ?? null
+        );
+
         ExamViolation::create([
             'attempt_id' => $attempt->id,
             'violation_type' => $data['violation_type'],
@@ -274,17 +303,17 @@ class AttemptController extends Controller
 
         $attempt->increment('violation_count');
         $attempt->refresh();
-        $attempt->update(['last_activity_at' => now()]);
-
-        $mustAutoSubmit = $attempt->violation_count >= $attempt->exam->max_violations;
-
-        if ($mustAutoSubmit) {
-            $this->finalizeAttempt($attempt, ExamAttempt::STATUS_AUTO_SUBMITTED, 'max_violations');
-        }
+        $attempt->update([
+            'locked_at' => now(),
+            'locked_reason' => $displayReason,
+            'last_activity_at' => now(),
+        ]);
 
         return response()->json([
             'recorded' => true,
-            'auto_submit' => $mustAutoSubmit,
+            'auto_submit' => false,
+            'locked' => true,
+            'locked_reason' => $displayReason,
             'violation_count' => $attempt->violation_count,
             'redirect_url' => route('exam.attempts.result', $attempt),
         ]);
@@ -532,5 +561,18 @@ class AttemptController extends Controller
         return $questions
             ->sortBy(fn ($question) => $orderMap->get($question->id, PHP_INT_MAX))
             ->values();
+    }
+
+    protected function violationReasonForStudent(string $violationType, ?string $detail = null): string
+    {
+        return match ($violationType) {
+            'tab_hidden', 'window_blur' => 'Terdeteksi berpindah tab atau meminimize browser.',
+            'fullscreen_exit' => 'Terdeteksi keluar dari mode layar penuh.',
+            'context_menu' => 'Terdeteksi membuka menu klik kanan pada halaman ujian.',
+            'copy_attempt' => 'Terdeteksi mencoba menyalin isi ujian.',
+            'blocked_shortcut' => 'Terdeteksi menekan shortcut yang dilarang.',
+            'leave_page' => 'Terdeteksi mencoba meninggalkan halaman ujian.',
+            default => $detail ?: 'Terdeteksi aktivitas yang melanggar aturan ujian.',
+        };
     }
 }

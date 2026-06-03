@@ -26,15 +26,32 @@
                             @if ($violation->attempt->student_identifier)
                                 <p class="mt-1 text-xs text-amber-700">{{ $violation->attempt->student_identifier }}</p>
                             @endif
-                            <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-700">{{ str_replace('_', ' ', $violation->violation_type) }}</p>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <span class="text-xs uppercase tracking-[0.3em] text-amber-700">{{ str_replace('_', ' ', $violation->violation_type) }}</span>
+                                @if ($violation->attempt->isLocked())
+                                    <span class="rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-700">
+                                        Sesi terkunci
+                                    </span>
+                                @endif
+                            </div>
                         </div>
-                        <form method="POST" action="{{ route('teacher.exams.violations.destroy', [$exam, $violation]) }}" data-confirm-action="delete-violation" data-confirm-keyword="HAPUS" data-confirm-message="Hapus catatan pelanggaran untuk {{ $violation->attempt->participantName() }}?">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
-                                Hapus
-                            </button>
-                        </form>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            @if ($violation->attempt->isLocked())
+                                <form method="POST" action="{{ route('teacher.monitoring.attempts.unlock', $violation->attempt) }}" data-confirm-action="unlock-attempt-detail" data-confirm-message="Buka kembali sesi ujian untuk {{ $violation->attempt->participantName() }}?">
+                                    @csrf
+                                    <button type="submit" class="dashboard-button-success px-4 py-2 text-xs">
+                                        Buka kunci
+                                    </button>
+                                </form>
+                            @endif
+                            <form method="POST" action="{{ route('teacher.exams.violations.destroy', [$exam, $violation]) }}" data-confirm-action="delete-violation" data-confirm-keyword="HAPUS" data-confirm-message="Hapus catatan pelanggaran untuk {{ $violation->attempt->participantName() }}?">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dashboard-button-danger px-4 py-2 text-xs">
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     <p class="mt-2 text-sm text-amber-900">{{ $violation->detail ?: 'Pelanggaran terdeteksi otomatis.' }}</p>
                     <p class="mt-2 text-xs text-amber-700">{{ $violation->happened_at->format('d M Y H:i:s') }}</p>

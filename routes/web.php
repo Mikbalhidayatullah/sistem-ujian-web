@@ -53,6 +53,7 @@ Route::middleware(['auth', 'dashboard.session'])->group(function () {
     Route::prefix('teacher')->middleware('role:teacher')->name('teacher.')->group(function () {
         Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('dashboard');
         Route::get('/monitoring', [TeacherDashboardController::class, 'monitoring'])->name('monitoring');
+        Route::post('/monitoring/attempts/{attempt}/unlock', [TeacherDashboardController::class, 'unlockAttempt'])->name('monitoring.attempts.unlock');
         Route::delete('/monitoring', [TeacherDashboardController::class, 'destroyAllMonitoringViolations'])->name('monitoring.destroy-all');
         Route::delete('/monitoring/{violation}', [TeacherDashboardController::class, 'destroyMonitoringViolation'])->name('monitoring.destroy');
         Route::get('/subjects', [SubjectController::class, 'index'])->name('subjects.index');

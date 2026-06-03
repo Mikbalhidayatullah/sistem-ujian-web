@@ -2,37 +2,29 @@
     $defaultBuilderTab = $errors->has('question_template') || $errors->has('default_points') ? 'quick' : 'manual';
 @endphp
 
-<div class="dashboard-card p-6 sm:p-7" data-question-builder data-default-tab="{{ $defaultBuilderTab }}">
-    <x-ui.dashboard-header
-        eyebrow="Input Soal"
-        title="Tambah soal ke ujian ini"
-        description="Pilih mode input yang paling nyaman. Anda bisa mengetik satu soal manual atau paste banyak soal sekaligus dari template."
-    >
-        <x-slot:aside>
-            <div class="flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    class="dashboard-button-primary"
-                    data-question-builder-tab="manual"
-                    aria-pressed="{{ $defaultBuilderTab === 'manual' ? 'true' : 'false' }}"
-                >
-                    Input Manual
-                </button>
-                <button
-                    type="button"
-                    class="dashboard-button-soft"
-                    data-question-builder-tab="quick"
-                    aria-pressed="{{ $defaultBuilderTab === 'quick' ? 'true' : 'false' }}"
-                >
-                    Input Cepat
-                </button>
-            </div>
-        </x-slot:aside>
-    </x-ui.dashboard-header>
+<div data-question-builder data-default-tab="{{ $defaultBuilderTab }}">
+    <div class="flex flex-wrap gap-3">
+        <button
+            type="button"
+            class="dashboard-button-primary"
+            data-question-builder-tab="manual"
+            aria-pressed="{{ $defaultBuilderTab === 'manual' ? 'true' : 'false' }}"
+        >
+            Input Manual
+        </button>
+        <button
+            type="button"
+            class="dashboard-button-soft"
+            data-question-builder-tab="quick"
+            aria-pressed="{{ $defaultBuilderTab === 'quick' ? 'true' : 'false' }}"
+        >
+            Input Cepat
+        </button>
+    </div>
 
     <div class="mt-6 space-y-6">
         <div data-question-builder-panel="manual" @class(['hidden' => $defaultBuilderTab !== 'manual'])>
-            <form method="POST" action="{{ route('teacher.exams.questions.store', $exam) }}" enctype="multipart/form-data" class="mt-5 space-y-5">
+            <form method="POST" action="{{ route('teacher.exams.questions.store', $exam) }}" enctype="multipart/form-data" class="space-y-5">
                 @csrf
 
                 <div class="space-y-4">
@@ -114,7 +106,7 @@
         </div>
 
         <div data-question-builder-panel="quick" @class(['hidden' => $defaultBuilderTab !== 'quick'])>
-            <form method="POST" action="{{ route('teacher.exams.questions.import-template', $exam) }}" class="mt-5 space-y-5">
+            <form method="POST" action="{{ route('teacher.exams.questions.import-template', $exam) }}" class="space-y-5">
                 @csrf
                 <div class="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
                     <div class="space-y-5">
